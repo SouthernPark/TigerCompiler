@@ -19,11 +19,41 @@ while, for, to, break, let, in, end, function, var, type, array, if, then, else,
 ## Identifiers
 An identifier is a sequence of letters, digits, and underscores, starting with a letter. Uppercase letters are distinguished from lowercase.
 
+	regexp: [a-zA-Z][a-zA-Z0-9_]*
+
 ## Comments
 A comment may appear between any two tokens. Comments start with /* and end with */ and may be nested.
 
+Using YYBEGIN and changable start state to deal with possible nested comments. (Described in page 31 of the book)
+
+To implement nested comment, we need to count the number lett /* and right */ (we only exit the COMMET state when the count matches)
+
+### valid comments
+
+```
+/* valid comments */
+
+/* comment */ */ (regard as valid, the last */ will be regared as TIME and DIVIDE)
+
+/**/* abc */ def */ (regard as valid. the first 4 chars will be regared as comments, the rest will either be ws, id, time or divide)
+
+ (This case is the same as the second case)
+```
+
+### invalid comments
+
+```
+/* /*  */ will be regarded Unclosed Comment
+
+/*///*/ will be regarded as Unclosed Comment
+
+```
 
 ## Integer literal
+
+```
+regexp: [0-9]+
+```
 
 ## String literal
 The string value that you return for a string literal should have all the escape sequences translated into their meanings.
