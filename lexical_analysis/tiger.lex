@@ -4,12 +4,15 @@ type lexresult = Tokens.token
 val lineNum = ErrorMsg.lineNum
 val linePos = ErrorMsg.linePos
 val leftCommentCount = ref 0
+val str = ref ""
+val isStrEnd = ref false
+val strStartPos = ref 0
 
-fun err(p1,p2) = ErrorMsg.error p1
+fun err(p1,p2) = ErrorMsg.error p1;
 
-fun checkComment () = if (!leftCommentCount) = 0 then () else ErrorMsg.error (!lineNum) "Unclosed Comment"
+fun checkComment () = if (!leftCommentCount) = 0 then () else ErrorMsg.error (!lineNum) "Unclosed Comment";
 
-fun eof() = let val pos = hd(!linePos); val () = checkComment() in Tokens.EOF(pos,pos) end
+fun eof() = let val pos = hd(!linePos); val () = checkComment() in Tokens.EOF(pos,pos) end;
 
 %%
 digit = [0-9];
@@ -17,7 +20,7 @@ alphabet = [a-zA-Z];
 id = [a-zA-Z][a-zA-Z0-9_]*;
 ws = [\t\ ];
 
-%s COMMENT;
+%s COMMENT STRING;
 
 %%
 
@@ -71,10 +74,13 @@ ws = [\t\ ];
 <INITIAL>"," 		=> (Tokens.COMMA(yypos, yypos + 1));
 
 <INITIAL>{digit}+	=> (Tokens.INT(valOf(Int.fromString yytext), yypos, yypos + size yytext));
-
 <INITIAL>{ws}		=> (continue());
-
 <INITIAL>{id} 		=> (Tokens.ID(yytext, yypos, yypos + size(yytext)));
+
+<INITIAL> \"            => (YYBEGIN STRING; str :=""; isStrEnd := false;strStartPos := yypos;continue());
+<STRING>  \"            => (YYBEGIN INITIAL; isStrEnd := true;Tokens.STRING(!str, !strStartPos,yypos+1));
+<STRING>  \\(n|t|\^c|[0-9]{3}|\"|\\)  => (str := !str^valOf(String.fromString yytext);continue());
+<STRING>  .             => (str := !str ^ yytext; continue());
 
 <INITIAL>.       	=> (ErrorMsg.error yypos ("illegal character " ^ yytext); continue());
 
