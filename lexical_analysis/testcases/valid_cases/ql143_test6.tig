@@ -1,0 +1,4 @@
+val str := "\"abc\"";
+
+val str := "\"abc\"\n\t";
+
