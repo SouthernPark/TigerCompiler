@@ -30,7 +30,7 @@ ws = [\t\ ];
 <COMMENT>(.|"\n")  	=> (continue());
 
 <INITIAL>\n		=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
-<INITIAL>","		=> (Tokens.COMMA(yypos,yypos+1));
+
 <INITIAL>type		=> (Tokens.TYPE(yypos, yypos + 4));
 <INITIAL>var 		=> (Tokens.VAR(yypos, yypos + 3));
 <INITIAL>function 	=> (Tokens.FUNCTION(yypos, yypos + 8));
