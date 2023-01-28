@@ -1,0 +1,6 @@
+val str1 := "normal string\n"
+
+val str2 := "normal \n string"
+
+val str3 := "\nnormal string"
+

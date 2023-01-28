@@ -1,0 +1,6 @@
+val str1 := "\tnormal string"
+
+val str2 := "normal\tstring"
+
+val str3 := "normal string\t"
+

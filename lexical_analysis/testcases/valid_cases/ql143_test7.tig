@@ -1,0 +1,6 @@
+val str := "\\string"
+
+val str := "\\string\\"
+
+val str := "\\str\\ing\\\n"
+
