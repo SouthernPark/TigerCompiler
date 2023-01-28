@@ -51,12 +51,48 @@ To implement nested comment, we need to count the number lett /* and right */ (w
 
 ## Integer literal
 
+A sequence of decimal digits is an integer constant that denotes the corresponding integer value.
+
 ```
 regexp: [0-9]+
 ```
 
 ## String literal
 The string value that you return for a string literal should have all the escape sequences translated into their meanings.
+
+Defined in page 516
+
+A string constant is a sequence, between quotes ("), of zero or more printable characters, spaces, or escape sequences. Each escape sequence is introduced by the escape character \, and stands for a character sequence. The allowed escape sequences are as follows (all other uses of \ being illegal):
+
+| escape sequences | meaning                                                      |
+|:----------------:|:------------------------------------------------------------:|
+| \n               | A character interpreted by the system as end-of-line.        |
+| \t               | Tab                                                          |
+| \^c              | The control character c, for any appropriate c.              |
+| \ddd             | The single character with ASCII code ddd (3 decimal digits). |
+| \"               | The double-quote character (")                               |
+| \\               | The backslash character (\).                                 |
+
+The last escape sequence is as below:
+
+```
+\f___f\
+
+This sequence is ignored, where f f stands for
+a sequence of one or more formatting characters (a subset of
+the non-printable characters including at least space, tab,
+newline, formfeed). This allows one to write long strings
+on more than one line, by writing \ at the end of one line
+and at the start of the next.
+
+```
+
+all other uses of \ being illegal
+
+Resouces explain the "\^c" control character:
+
+[control_character](https://www.geeksforgeeks.org/control-characters/ "control_character")
+
 
 ## puctuation symbols
 , : ; ( ) [ ] { } . + - * / = <> < <= > >= & | :=
