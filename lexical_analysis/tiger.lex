@@ -80,20 +80,14 @@ ws = [\t\ \n];
 <INITIAL> \"            => (YYBEGIN STRING; str :=""; isStrEnd := false;strStartPos := yypos;continue());
 <STRING>  \"            => (YYBEGIN INITIAL; isStrEnd := true;Tokens.STRING(!str, !strStartPos,yypos+1));
 
-<STRING> \\		=> (YYBEGIN ESCAPE; continue());
-
-<ESCAPE> (n|t|\"|\\)	   	    =>(str := !str^valOf(String.fromString("\\" ^ yytext)); YYBEGIN STRING;  continue());
-
-<ESCAPE> (\^.|[0-9]{3})	    => (if String.fromString("\\" ^ yytext) = NONE
-                                then (ErrorMsg.error yypos ("illegal escape sequences " ^ "\\" ^ yytext); YYBEGIN STRING; continue())
-                                else (str := !str^valOf(String.fromString("\\" ^ yytext)); YYBEGIN STRING; continue())
+<STRING> \\(n|t|\"|\\)	   	    =>(str := !str^valOf(String.fromString  yytext);  continue());
+<STRING> \\(\^.|[0-9]{3})	    => (if String.fromString  yytext = NONE
+                                then (ErrorMsg.error yypos ("illegal escape sequences " ^  yytext); continue())
+                                else (str := !str^valOf(String.fromString yytext); continue())
 			       );
-
-<ESCAPE> {ws}+\\			  => (YYBEGIN STRING; continue());
-
-<ESCAPE> (.|\n) => (ErrorMsg.error yypos ("illegal escape sequence " ^ "\\" ^ yytext); YYBEGIN STRING; continue());
-
-
+<STRING> \\		=> (YYBEGIN ESCAPE; continue());
+<ESCAPE> {ws}+\\        => (YYBEGIN STRING; continue());
+<ESCAPE> (.|\n)         => (ErrorMsg.error yypos ("illegal escape sequence " ^ "\\" ^ yytext); YYBEGIN STRING; continue());
 <STRING>  .             => (str := !str ^ yytext; continue());
 
 <INITIAL>.       	=> (ErrorMsg.error yypos ("illegal character " ^ yytext); continue());
