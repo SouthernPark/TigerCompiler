@@ -64,15 +64,16 @@ Defined in page 516
 
 A string constant is a sequence, between quotes ("), of zero or more printable characters, spaces, or escape sequences. Each escape sequence is introduced by the escape character \, and stands for a character sequence. The allowed escape sequences are as follows (all other uses of \ being illegal):
 
-| escape sequences | meaning                                                      | finsihed                           |
-|:----------------:|:------------------------------------------------------------:|------------------------------------|
-| \n               | A character interpreted by the system as end-of-line.        | yes                                |
-| \t               | Tab                                                          | yes                                |
-| \^c              | The control character c, for any appropriate c.              | no (should give c options)         |
-| \ddd             | The single character with ASCII code ddd (3 decimal digits). | no (can not handle beyond [0-255]) |
-| \"               | The double-quote character (")                               | yes                                |
-| \\               | The backslash character (\).                                 | yes                                |
-| \f___f\          | noted below                                                  | no                                 |
+| escape sequences | meaning                                                      | finsihed |
+|:----------------:|:------------------------------------------------------------:|----------|
+| \n               | A character interpreted by the system as end-of-line.        | yes      |
+| \t               | Tab                                                          | yes      |
+| \^c              | The control character c, for any appropriate c.              | yes      |
+| \ddd             | The single character with ASCII code ddd (3 decimal digits). | yes      |
+| \"               | The double-quote character (")                               | yes      |
+| \\               | The backslash character (\).                                 | yes      |
+| \f___f\          | noted below                                                  | yes      |
+
 
 The last escape sequence is as below:
 

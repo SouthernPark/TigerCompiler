@@ -18,24 +18,24 @@ fun eof() = let val pos = hd(!linePos); val () = checkComment() in Tokens.EOF(po
 digit = [0-9];
 alphabet = [a-zA-Z];
 id = [a-zA-Z][a-zA-Z0-9_]*;
-ws = [\t\ ];
+ws = [\t\ \n];
 
-%s COMMENT STRING;
+%s COMMENT STRING ESCAPE;
 
 %%
 
 <INITIAL>"/*"		=> (leftCommentCount := !leftCommentCount + 1; YYBEGIN COMMENT; continue());
 <COMMENT>"/*"		=> (leftCommentCount := !leftCommentCount + 1; continue());
-<COMMENT>"*/" 		=> (leftCommentCount := !leftCommentCount - 1; if !leftCommentCount = 0 then (YYBEGIN INITIAL; continue()) else continue());
-<COMMENT>(.|"\n")  	=> (continue());
+<COMMENT>"*/"		=> (leftCommentCount := !leftCommentCount - 1; if !leftCommentCount = 0 then (YYBEGIN INITIAL; continue()) else continue());
+<COMMENT>(.|"\n")	=> (continue());
 
 <INITIAL>\n		=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 
 <INITIAL>type		=> (Tokens.TYPE(yypos, yypos + 4));
-<INITIAL>var 		=> (Tokens.VAR(yypos, yypos + 3));
-<INITIAL>function 	=> (Tokens.FUNCTION(yypos, yypos + 8));
-<INITIAL>break 		=> (Tokens.BREAK(yypos, yypos + 5));
-<INITIAL>of 		=> (Tokens.OF(yypos, yypos + 2));
+<INITIAL>var		=> (Tokens.VAR(yypos, yypos + 3));
+<INITIAL>function	=> (Tokens.FUNCTION(yypos, yypos + 8));
+<INITIAL>break		=> (Tokens.BREAK(yypos, yypos + 5));
+<INITIAL>of		=> (Tokens.OF(yypos, yypos + 2));
 <INITIAL>end 		=> (Tokens.END(yypos, yypos + 3));
 <INITIAL>in 		=> (Tokens.IN(yypos, yypos + 2));
 <INITIAL>nil 		=> (Tokens.NIL(yypos, yypos + 3));
@@ -79,7 +79,21 @@ ws = [\t\ ];
 
 <INITIAL> \"            => (YYBEGIN STRING; str :=""; isStrEnd := false;strStartPos := yypos;continue());
 <STRING>  \"            => (YYBEGIN INITIAL; isStrEnd := true;Tokens.STRING(!str, !strStartPos,yypos+1));
-<STRING>  \\(n|t|\^c|[0-9]{3}|\"|\\)  => (str := !str^valOf(String.fromString yytext);continue());
+
+<STRING> \\		=> (YYBEGIN ESCAPE; continue());
+
+<ESCAPE> (n|t|\"|\\)	   	    =>(str := !str^valOf(String.fromString("\\" ^ yytext)); YYBEGIN STRING;  continue());
+
+<ESCAPE> (\^.|[0-9]{3})	    => (if String.fromString("\\" ^ yytext) = NONE
+                                then (ErrorMsg.error yypos ("illegal escape sequences " ^ "\\" ^ yytext); YYBEGIN STRING; continue())
+                                else (str := !str^valOf(String.fromString("\\" ^ yytext)); YYBEGIN STRING; continue())
+			       );
+
+<ESCAPE> {ws}+\\			  => (YYBEGIN STRING; continue());
+
+<ESCAPE> (.|\n) => (ErrorMsg.error yypos ("illegal escape sequence " ^ "\\" ^ yytext); YYBEGIN STRING; continue());
+
+
 <STRING>  .             => (str := !str ^ yytext; continue());
 
 <INITIAL>.       	=> (ErrorMsg.error yypos ("illegal character " ^ yytext); continue());
