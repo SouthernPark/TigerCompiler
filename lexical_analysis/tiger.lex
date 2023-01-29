@@ -10,9 +10,17 @@ val strStartPos = ref 0
 
 fun err(p1,p2) = ErrorMsg.error p1;
 
-fun checkComment () = if (!leftCommentCount) = 0 then () else ErrorMsg.error (!lineNum) "Unclosed Comment";
+fun checkComment pos = if (!leftCommentCount) = 0 then () else ErrorMsg.error pos "Unclosed Comment";
+fun checkString pos = if (!isStrEnd) = true then () else ErrorMsg.error pos "Unclosed String";
 
-fun eof() = let val pos = hd(!linePos); val () = checkComment() in Tokens.EOF(pos,pos) end;
+fun eof() = let 
+                val pos = hd(!linePos)
+                val () = checkComment(pos) 
+                val () = checkString(pos)
+            in 
+                leftCommentCount := 0;
+                Tokens.EOF(pos, pos) 
+            end;
 
 %%
 digit = [0-9];
@@ -27,7 +35,8 @@ ws = [\t\ \n];
 <INITIAL>"/*"		=> (leftCommentCount := !leftCommentCount + 1; YYBEGIN COMMENT; continue());
 <COMMENT>"/*"		=> (leftCommentCount := !leftCommentCount + 1; continue());
 <COMMENT>"*/"		=> (leftCommentCount := !leftCommentCount - 1; if !leftCommentCount = 0 then (YYBEGIN INITIAL; continue()) else continue());
-<COMMENT>(.|"\n")	=> (continue());
+<COMMENT>"\n"		=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
+<COMMENT>.      	=> (continue());
 
 <INITIAL>\n		=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 
@@ -77,17 +86,20 @@ ws = [\t\ \n];
 <INITIAL>{ws}		=> (continue());
 <INITIAL>{id} 		=> (Tokens.ID(yytext, yypos, yypos + size(yytext)));
 
-<INITIAL> \"            => (YYBEGIN STRING; str :=""; isStrEnd := false;strStartPos := yypos;continue());
-<STRING>  \"            => (YYBEGIN INITIAL; isStrEnd := true;Tokens.STRING(!str, !strStartPos,yypos+1));
+<INITIAL> \"		=> (YYBEGIN STRING; str :=""; isStrEnd := false; strStartPos := yypos; continue());
+<STRING>  \"		=> (YYBEGIN INITIAL; isStrEnd := true; Tokens.STRING(!str, !strStartPos, yypos+1));
 
 <STRING> \\(n|t|\"|\\)	   	    =>(str := !str^valOf(String.fromString  yytext);  continue());
 <STRING> \\(\^.|[0-9]{3})	    => (if String.fromString  yytext = NONE
                                 then (ErrorMsg.error yypos ("illegal escape sequences " ^  yytext); continue())
-                                else (str := !str^valOf(String.fromString yytext); continue())
-			       );
+                                else (str := !str^valOf(String.fromString yytext); continue()));
+<STRING> \n		=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; str := !str ^ yytext; 
+                	ErrorMsg.error yypos ("illegal new line"); continue());
 <STRING> \\		=> (YYBEGIN ESCAPE; continue());
-<ESCAPE> {ws}+\\        => (YYBEGIN STRING; continue());
-<ESCAPE> (.|\n)         => (ErrorMsg.error yypos ("illegal escape sequence " ^ "\\" ^ yytext); YYBEGIN STRING; continue());
+<ESCAPE> \n		=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
+<ESCAPE> [\t\ \r\f]     => (continue());
+<ESCAPE> \\             => (YYBEGIN STRING; continue());
+<ESCAPE>  .             => (ErrorMsg.error yypos ("illegal escape sequence " ^ "\\" ^ yytext); YYBEGIN STRING; continue());
 <STRING>  .             => (str := !str ^ yytext; continue());
 
 <INITIAL>.       	=> (ErrorMsg.error yypos ("illegal character " ^ yytext); continue());
