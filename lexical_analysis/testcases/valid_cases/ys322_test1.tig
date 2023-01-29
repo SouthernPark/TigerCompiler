@@ -1,0 +1,7 @@
+string s1 := "xxx\nxxx\
+   \yz";
+/* this is a 
+Comment
+*/
+
+string s2 := "unclosed string
