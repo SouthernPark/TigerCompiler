@@ -5,7 +5,7 @@ val lineNum = ErrorMsg.lineNum
 val linePos = ErrorMsg.linePos
 val leftCommentCount = ref 0
 val str = ref ""
-val isStrEnd = ref false
+val isStrEnd = ref true
 val strStartPos = ref 0
 
 fun err(p1,p2) = ErrorMsg.error p1;
