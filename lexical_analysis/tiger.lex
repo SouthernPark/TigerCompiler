@@ -13,13 +13,14 @@ fun err(p1,p2) = ErrorMsg.error p1;
 fun checkComment pos = if (!leftCommentCount) = 0 then () else ErrorMsg.error pos "Unclosed Comment";
 fun checkString pos = if (!isStrEnd) = true then () else ErrorMsg.error pos "Unclosed String";
 
-fun eof() = let 
+fun eof() = let
                 val pos = hd(!linePos)
-                val () = checkComment(pos) 
+                val () = checkComment(pos)
                 val () = checkString(pos)
-            in 
+            in
                 leftCommentCount := 0;
-                Tokens.EOF(pos, pos) 
+                isStrEnd := true;
+                Tokens.EOF(pos, pos)
             end;
 
 %%
@@ -93,7 +94,7 @@ ws = [\t\ \n];
 <STRING> \\(\^.|[0-9]{3})	    => (if String.fromString  yytext = NONE
                                 then (ErrorMsg.error yypos ("illegal escape sequences " ^  yytext); continue())
                                 else (str := !str^valOf(String.fromString yytext); continue()));
-<STRING> \n		=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; str := !str ^ yytext; 
+<STRING> \n		=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; str := !str ^ yytext;
                 	ErrorMsg.error yypos ("illegal new line"); continue());
 <STRING> \\		=> (YYBEGIN ESCAPE; continue());
 <ESCAPE> \n		=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
