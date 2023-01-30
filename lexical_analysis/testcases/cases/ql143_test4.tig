@@ -1,0 +1,6 @@
+var str1 := "normal string\n"
+
+var str2 := "normal \n string"
+
+var str3 := "\nnormal string"
+

@@ -24,7 +24,7 @@ fun lst_size [] = 0
 
 fun lexer_test(filename:string, exp_lst) =
     let val opt_lst = parse filename
-        fun check([], []) = print("== The output tokens of "^ filename ^"matches with expected tokens  ==\n")
+        fun check([], []) = print("== The output tokens of "^ filename ^" matches with expected tokens  ==\n")
           | check(a::e_l, b::o_l) = if a = b then check(e_l, o_l)
                                     else print("** Output token: "^ a ^" in file "^ filename ^" does not match with epxected token: "^b ^" **\n")
 
