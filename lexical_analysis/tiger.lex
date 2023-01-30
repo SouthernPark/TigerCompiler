@@ -27,7 +27,7 @@ fun eof() = let
 digit = [0-9];
 alphabet = [a-zA-Z];
 id = [a-zA-Z][a-zA-Z0-9_]*;
-ws = [\t\ \n];
+ws = [\t\ \n\r];
 
 %s COMMENT STRING ESCAPE;
 
