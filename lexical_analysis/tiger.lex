@@ -4,6 +4,7 @@ type lexresult = Tokens.token
 val lineNum = ErrorMsg.lineNum
 val linePos = ErrorMsg.linePos
 val leftCommentCount = ref 0
+val commentStartPos = ref 0
 val str = ref ""
 val isStrEnd = ref true
 val strStartPos = ref 0
@@ -15,8 +16,8 @@ fun checkString pos = if (!isStrEnd) = true then () else ErrorMsg.error pos "Unc
 
 fun eof() = let
                 val pos = hd(!linePos)
-                val () = checkComment(pos)
-                val () = checkString(pos)
+                val () = checkComment(!commentStartPos)
+                val () = checkString(!strStartPos)
             in
                 leftCommentCount := 0;
                 isStrEnd := true;
@@ -33,7 +34,7 @@ ws = [\t\ \n\r];
 
 %%
 
-<INITIAL>"/*"		=> (leftCommentCount := !leftCommentCount + 1; YYBEGIN COMMENT; continue());
+<INITIAL>"/*"		=> (leftCommentCount := !leftCommentCount + 1; commentStartPos := yypos; YYBEGIN COMMENT; continue());
 <COMMENT>"/*"		=> (leftCommentCount := !leftCommentCount + 1; continue());
 <COMMENT>"*/"		=> (leftCommentCount := !leftCommentCount - 1; if !leftCommentCount = 0 then (YYBEGIN INITIAL; continue()) else continue());
 <COMMENT>"\n"		=> (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
