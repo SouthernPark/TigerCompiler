@@ -14,13 +14,16 @@ fun err(p1,p2) = ErrorMsg.error p1;
 fun checkComment pos = if (!leftCommentCount) = 0 then () else ErrorMsg.error pos "Unclosed Comment";
 fun checkString pos = if (!isStrEnd) = true then () else ErrorMsg.error pos "Unclosed String";
 
+fun reset() = (leftCommentCount := 0;
+                isStrEnd := true)
+
 fun eof() = let
                 val pos = hd(!linePos)
                 val () = checkComment(!commentStartPos)
                 val () = checkString(!strStartPos)
             in
-                leftCommentCount := 0;
-                isStrEnd := true;
+                reset();
+                ErrorMsg.reset();
                 Tokens.EOF(pos, pos)
             end;
 
