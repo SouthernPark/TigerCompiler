@@ -6,9 +6,9 @@ Besides from INITIAL start state, we also created a COMMENT start state.
 
 Every time we see a "/*" in the INITIAL state,we move into the COMMENT state. Because tiger language supports nested comments, we use a variable to count the comment depth.
 
-Each time we encounter a "/*" we increase the depth by 1. If we encounter a "*/", we will reduce it by 1.
+Each time we encounter a '/\*' we increase the depth by 1. If we encounter a "\*/", we will reduce it by 1.
 
-We jump out of COMMETN state to INTIAL state if and only if we encountered a "*/" and the comment depth is equal to 0.
+We jump out of COMMETN state to INTIAL state if and only if we encountered a "\*/" and the comment depth is equal to 0.
 
 ### How we handle strings
 
