@@ -1,3 +1,5 @@
+structure A = Absyn
+
 %%
 %term
     EOF 
@@ -11,7 +13,7 @@
   | BREAK | NIL
   | FUNCTION | VAR | TYPE 
 
-%nonterm  exp | program
+%nonterm  exp | program of A.exp
 
 %pos int
 %verbose
@@ -32,7 +34,7 @@
 
 %%
 
-program	: exp				()
+program	: exp				(exp)
 
 	
-exp: 			()
+exp: NIL		(A.NilExp)
