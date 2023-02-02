@@ -38,3 +38,32 @@ program	: exp				(exp)
 
 	
 exp: NIL		(A.NilExp)
+   | lvalue
+
+decs: dec                                                             ()
+    | decs dec                                                        ()
+    |                                                                 ()
+
+dec: tydec                                                            ()
+   | vardec                                                           ()
+   | fundec                                                           ()
+	
+tydec: TYPE ID EQ ty                                                  ()
+
+ty: ID                                                                ()
+  | LBRACE tyfields RBRACE                                            ()
+  | ARRAY OF ID                                                       ()
+
+tyfields: ID COLON ID                                                 ()
+        | ID COLON ID COMMA tyfields                                  ()
+        |                                                             ()
+
+vardec: VAR ID ASSIGN exp                                             (A.VarDec({name = Symbol.symbol(), escape = ref true, typ = Symbol.symbol(), init = .., pos = ..}))
+      | VAR ID COLON ID ASSIGN exp                                    ()
+
+fundec: FUNCTION ID LPAREN typefields RPAREN EQ exp                   ()
+      | FUNCTION ID LPAREN typefields RPAREN COLON ID EQ exp          ()
+
+lvalue: ID                                                            ()
+      | lvalue DOT ID                                                 ()
+      | lvalue LBRACK exp RBRACK                                      ()
