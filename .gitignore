@@ -1,2 +1,4 @@
 .cm/
 *.lex.sml
+*.grm.*
+
