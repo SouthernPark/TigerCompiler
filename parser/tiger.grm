@@ -2,18 +2,18 @@ structure A = Absyn
 
 %%
 %term
-    EOF 
+    EOF
   | ID of string
-  | INT of int | STRING of string 
-  | COMMA | COLON | SEMICOLON | LPAREN | RPAREN | LBRACK | RBRACK 
-  | LBRACE | RBRACE | DOT 
+  | INT of int | STRING of string
+  | COMMA | COLON | SEMICOLON | LPAREN | RPAREN | LBRACK | RBRACK
+  | LBRACE | RBRACE | DOT
   | PLUS | MINUS | TIMES | DIVIDE | EQ | NEQ | LT | LE | GT | GE
   | AND | OR | ASSIGN
-  | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF 
+  | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF
   | BREAK | NIL
-  | FUNCTION | VAR | TYPE 
+  | FUNCTION | VAR | TYPE
 
-%nonterm  exp | program of A.exp
+%nonterm  exp of A.exp | program of A.exp | decs of A.dec list | dec of A.dec | ty of A.ty | tydec of A.dec | vardec of A.dec
 
 %pos int
 %verbose
@@ -23,7 +23,7 @@ structure A = Absyn
 
 %name Tiger
 
-%keyword WHILE FOR TO BREAK LET IN END FUNCTION VAR TYPE ARRAY IF THEN ELSE 
+%keyword WHILE FOR TO BREAK LET IN END FUNCTION VAR TYPE ARRAY IF THEN ELSE
 	DO OF NIL
 
 %prefer THEN ELSE LPAREN
@@ -34,36 +34,23 @@ structure A = Absyn
 
 %%
 
-program	: exp				(exp)
+program	: exp								(exp)
 
-	
-exp: NIL		(A.NilExp)
-   | lvalue
 
-decs: dec                                                             ()
-    | decs dec                                                        ()
-    |                                                                 ()
+exp: NIL								(A.NilExp)
 
-dec: tydec                                                            ()
-   | vardec                                                           ()
-   | fundec                                                           ()
-	
-tydec: TYPE ID EQ ty                                                  ()
 
-ty: ID                                                                ()
-  | LBRACE tyfields RBRACE                                            ()
-  | ARRAY OF ID                                                       ()
+decs: dec decs								(dec :: decs)
+    | 	  								(nil)
 
-tyfields: ID COLON ID                                                 ()
-        | ID COLON ID COMMA tyfields                                  ()
-        |                                                             ()
+dec: tydec                                                            	(tydec)
+   | vardec                                                           	(vardec)
 
-vardec: VAR ID ASSIGN exp                                             (A.VarDec({name = Symbol.symbol(), escape = ref true, typ = Symbol.symbol(), init = .., pos = ..}))
-      | VAR ID COLON ID ASSIGN exp                                    ()
 
-fundec: FUNCTION ID LPAREN typefields RPAREN EQ exp                   ()
-      | FUNCTION ID LPAREN typefields RPAREN COLON ID EQ exp          ()
+tydec: TYPE ID EQ ty							(A.TypeDec({name=Symbol.symbol(ID), ty=ty, pos=TYPEleft}))
 
-lvalue: ID                                                            ()
-      | lvalue DOT ID                                                 ()
-      | lvalue LBRACK exp RBRACK                                      ()
+vardec: VAR ID ASSIGN exp						(A.VarDec({name=Symbol.symbol(ID), escape=ref true, typ=NONE, init=exp, pos=VARleft}))
+      | VAR ID COLON ID ASSIGN exp					(A.VarDec({name=Symbol.symbol(ID1), escape=ref true, typ=SOME(Symbol.symbol(ID2), IDleft), init=exp, pos=VARleft}))
+
+ty: ID	       	     	       						(A.NameTy(Symbol.symbol(ID), IDleft))
+
