@@ -69,7 +69,55 @@ Do not unsderstand the escape field defined in many datatypes in "absyn.sml".
 
 Is the pos for ID ?
 
+*** TODO vardec nil init must use long form
+The following is the abstract syntax of vardec
+#+BEGIN_SRC text
+  vardec -> var id := exp
+	 -> var id:type_id := exp
+
+#+END_SRC
+
+If the initializing expression is nil(NilExp), then the long form must be used.
+
+Do we need to report error in parsing phase.
+
+
 ** solved
+
+*** DONE mutual recusive func dec and type dec
+
+Mutual recusive func and type can only be defined in consecutive declarations.
+
+So in absyn.sml, the TypeDec (and FunctionDec) constructor of the abstract syntax takes a list of type declarations, not just a single type. The intent is that this list is a maximal consecutive sequence of type declarations. Thus, functions declared by the same TypeDec can be mutually recursive.
+
+how to achieve this ?
+
+Drew suggests get the wrong decs first, then in let expression we fix all the wrong decs.
+
+For example: at first we have:
+
+decs = {fundec, fundec, vardec, tydec, tydec}
+
+after reduction form let expression (let ... in ... end), we fix this and decs become
+
+decs = {fundec，vardec, tydec}
+
+The following code demonstrate how to fix decs
+
+#+BEGIN_SRC
+
+(* mergeLst ([1,2,3], [4,5,6]) => [1,2,3,4,5,6] *)
+fun mergeLst (l1, l2) = foldr (op ::) l2 l1
+
+(* merge FunctionDec and  TypeDec as long as they are consecutive*)
+(* ex: fixDecs([fd,fd,vd,vd,td,td]) => [fd, vd, vd, td]*)
+fun fixDecs ((A.FunctionDec lst1) :: (A.FunctionDec lst2) ::l) = fixDecs(A.FunctionDec(mergeLst(lst1, lst2)) :: l)
+  | fixDecs ((A.TypeDec lst1) :: (A.TypeDec lst2) ::l) = fixDecs(A.TypeDec(mergeLst(lst1, lst2)) :: l)
+  | fixDecs (a::l) = a :: fixDecs(l)
+  | fixDecs [] = []
+
+#+END_SRC
+
 
 *** shift reduce conflict in tyfields
 
@@ -85,8 +133,9 @@ We translate into the following (factoring) :
 
 #+BEGIN_SRC text
   tyfields: ID COLON ID tyfieldsTail				()
+	  |    	      						()
 
-  tyfieldsTail: COMMA tyfields					()
+  tyfieldsTail: COMMA ID COLON ID tyfieldsTail			()
 	      | 	    						()
 #+END_SRC
 
@@ -113,9 +162,22 @@ In my case, I defined as "tydec of A.dec"
 
 
 
+*** 2
+#+BEGIN_SRC
+
+tiger.grm.sml:110.30-110.33 Error: syntax error: replacing  LET with  ASTERISK
+tiger.grm.sml:401.59-401.62 Error: syntax error: replacing  LET with  EQUALOP
+sources.cm:10.2-10.11 Error: syntax error
+
+#+END_SRC
+
+let is a keyword in sml. So we can not use it as the name of non-term. instead, we use let_
+
+
+
 ** not solved
 
-*** TODO 1
+*** TODO typedec require list
 
 #+BEGIN_SRC
 
@@ -130,16 +192,6 @@ val it = false : bool
 
 The TypeDec constructor of the abstract syntax takes a list of type declarations, not just a single type. The intent is that this list is a maximal consecutive sequence of type declarations. Thus, functions declared by the same TypeDec can be mutually recursive.
 
-how to achieve this ?
-
-Drew suggests get the wrong decs first, then in let expression we fix all the wrong decs.
-
-For example: at first we have:
-
-decs = {fundec, fundec, vardec, tydec, tydec}
-
-after reduction form let expression (let ... in ... end), we fix this and decs become
-
-decs = {fundec，vardec, tydec}
+currently each dec list only contains one dec. In later phase, we will fix the decs.
 
 
