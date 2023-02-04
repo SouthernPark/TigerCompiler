@@ -71,6 +71,24 @@ Is the pos for ID ?
 
 ** solved
 
+*** shift reduce conflict in tyfields
+
+The following gramma has shift reduce conflict.
+
+#+BEGIN_SRC text
+tyfields: ID COLON ID                                                 ()
+        | ID COLON ID COMMA tyfields                                  ()
+        |                                                             ()
+#+END_SRC
+
+We translate into the following (factoring) :
+
+#+BEGIN_SRC text
+  tyfields: ID COLON ID tyfieldsTail				()
+
+  tyfieldsTail: COMMA tyfields					()
+	      | 	    						()
+#+END_SRC
 
 
 * Error
@@ -113,5 +131,15 @@ val it = false : bool
 The TypeDec constructor of the abstract syntax takes a list of type declarations, not just a single type. The intent is that this list is a maximal consecutive sequence of type declarations. Thus, functions declared by the same TypeDec can be mutually recursive.
 
 how to achieve this ?
+
+Drew suggests get the wrong decs first, then in let expression we fix all the wrong decs.
+
+For example: at first we have:
+
+decs = {fundec, fundec, vardec, tydec, tydec}
+
+after reduction form let expression (let ... in ... end), we fix this and decs become
+
+decs = {fundec，vardec, tydec}
 
 
