@@ -1,0 +1,197 @@
+#+TITLE Parser with ML-Yacc
+#+DATE <2023-02-04 Sat>
+
+
+* File explaination
+
+| file name      | explaination                                                   |
+| absyn.sml      | The abstract syntax data structure for Tiger                   |
+| printabsyn.sml | printer for abstract syntax trees, so you can seeyour results. |
+| symbol.sml     | A module to turn strings into symbols.                         |
+| tiger.grm      | The skeleton of a grammar specification                        |
+
+
+* ML-Yacc note
+
+good resources:
+http://cs.wellesley.edu/~cs235/fall08/lectures/35_YACC_revised.pdf
+
+** %value
+
+Specifies default values for value-bearing terminals.Terminals with default values may be created by an ml-yacc-generated parser as part of error-correction.
+
+** %term
+
+Specifies the terminals of the language. ml-yacc automatically constructs a Tokens module based on this specification.
+
+Tokens specified without "of" will have a constructor of two args: (1) its left position and (2) its right position.
+
+Tokens specified with "of" will have a constructor of three args: (1) the component datum (whose type follows "of"); (2) its left position; and (3) its the right position.
+
+These args can be used in the semantic action part.
+
+*** DONE How to use args in semantic action part?
+
+for each terminal or nonterminal such as F00 or F001 on the right-hand side of a rule, the ML variable FOOleft or FOOlleft stands for the left-end position of the terminal or nonterminal, and FOOright or F001right stands for the right-end position.
+
+terminal itself stands for the data assiciated with it. For example, for the "ID of string", you can use ID to get string data.
+
+** %nonterm
+
+"A of B" specifies the non-terminal A of the language and the kind of value B that the parser will generate for them
+
+ex:
+
+In "program of A.exp", program is a non-termianl and A.exp is a datatype defined in absyn.sml
+
+non-termianl can also be used in the semantic action part.
+
+*** DONE How to use them in semantic action part?
+
+the non-terminal itself stands itself stands for the value it can generate by the parser
+
+** %name
+prefix some names (like functor name) created by ml-yacc
+
+** %pos
+The type of postions for terminals
+
+
+* Issues
+
+** not solved
+
+*** TODO escape field
+
+Do not unsderstand the escape field defined in many datatypes in "absyn.sml".
+
+*** TODO (symbol * pos) option
+
+Is the pos for ID ?
+
+*** TODO vardec nil init must use long form
+The following is the abstract syntax of vardec
+#+BEGIN_SRC text
+  vardec -> var id := exp
+	 -> var id:type_id := exp
+
+#+END_SRC
+
+If the initializing expression is nil(NilExp), then the long form must be used.
+
+Do we need to report error in parsing phase.
+
+
+** solved
+
+*** DONE mutual recusive func dec and type dec
+
+Mutual recusive func and type can only be defined in consecutive declarations.
+
+So in absyn.sml, the TypeDec (and FunctionDec) constructor of the abstract syntax takes a list of type declarations, not just a single type. The intent is that this list is a maximal consecutive sequence of type declarations. Thus, functions declared by the same TypeDec can be mutually recursive.
+
+how to achieve this ?
+
+Drew suggests get the wrong decs first, then in let expression we fix all the wrong decs.
+
+For example: at first we have:
+
+decs = {fundec, fundec, vardec, tydec, tydec}
+
+after reduction form let expression (let ... in ... end), we fix this and decs become
+
+decs = {fundec，vardec, tydec}
+
+The following code demonstrate how to fix decs
+
+#+BEGIN_SRC
+
+(* mergeLst ([1,2,3], [4,5,6]) => [1,2,3,4,5,6] *)
+fun mergeLst (l1, l2) = foldr (op ::) l2 l1
+
+(* merge FunctionDec and  TypeDec as long as they are consecutive*)
+(* ex: fixDecs([fd,fd,vd,vd,td,td]) => [fd, vd, vd, td]*)
+fun fixDecs ((A.FunctionDec lst1) :: (A.FunctionDec lst2) ::l) = fixDecs(A.FunctionDec(mergeLst(lst1, lst2)) :: l)
+  | fixDecs ((A.TypeDec lst1) :: (A.TypeDec lst2) ::l) = fixDecs(A.TypeDec(mergeLst(lst1, lst2)) :: l)
+  | fixDecs (a::l) = a :: fixDecs(l)
+  | fixDecs [] = []
+
+#+END_SRC
+
+
+*** shift reduce conflict in tyfields
+
+The following gramma has shift reduce conflict.
+
+#+BEGIN_SRC text
+tyfields: ID COLON ID                                                 ()
+        | ID COLON ID COMMA tyfields                                  ()
+        |                                                             ()
+#+END_SRC
+
+We translate into the following (factoring) :
+
+#+BEGIN_SRC text
+  tyfields: ID COLON ID tyfieldsTail				()
+	  |    	      						()
+
+  tyfieldsTail: COMMA ID COLON ID tyfieldsTail			()
+	      | 	    						()
+#+END_SRC
+
+
+* Error
+
+** solved
+
+*** 1
+
+#+BEGIN_SRC
+
+tiger.grm.sml:221.23-224.5 Error: operator and operand do not agree [tycon mismatch]
+  operator domain: unit -> Absyn.dec
+  operand:         unit -> unit
+  in expression:
+    dec (fn _ => let val tydec as tydec1 = tydec1 () in tydec end)
+
+#+END_SRC
+
+you didn't define the output type of tydec in %non-term.
+In my case, I defined as "tydec of A.dec"
+
+
+
+
+*** 2
+#+BEGIN_SRC
+
+tiger.grm.sml:110.30-110.33 Error: syntax error: replacing  LET with  ASTERISK
+tiger.grm.sml:401.59-401.62 Error: syntax error: replacing  LET with  EQUALOP
+sources.cm:10.2-10.11 Error: syntax error
+
+#+END_SRC
+
+let is a keyword in sml. So we can not use it as the name of non-term. instead, we use let_
+
+
+
+** not solved
+
+*** TODO typedec require list
+
+#+BEGIN_SRC
+
+tiger.grm.sml:240.6-240.62 Error: operator and operand do not agree [tycon mismatch]
+  operator domain: {name:Absyn.symbol, pos:pos, ty:Absyn.ty} list
+  operand:         {name:Symbol.symbol, pos:'Z, ty:Absyn.ty}
+  in expression:
+    TypeDec {name=Symbol.symbol ID,ty=ty,pos=TYPEleft}
+val it = false : bool
+
+#+END_SRC
+
+The TypeDec constructor of the abstract syntax takes a list of type declarations, not just a single type. The intent is that this list is a maximal consecutive sequence of type declarations. Thus, functions declared by the same TypeDec can be mutually recursive.
+
+currently each dec list only contains one dec. In later phase, we will fix the decs.
+
+
