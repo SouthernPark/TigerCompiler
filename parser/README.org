@@ -298,6 +298,11 @@ let is a keyword in sml. So we can not use it as the name of non-term. instead, 
 
 
 
+*** 3
+In "tiger.grm.desc", we have the following error:
+
+warning: rule <let_ : LET decs IN exp END > will never be reduced. This means this rule can not be reached from the start state. This happens because we did not connect the exp with let_ state. To solve this proble, we move the rule to exp.
+
 ** not solved
 
 *** TODO typedec require list

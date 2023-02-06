@@ -57,8 +57,8 @@ exp: NIL								(A.NilExp)
    | lvalue								(A.VarExp(lvalue))
    | INT								(A.IntExp(INT))
    | STRING								(A.StringExp(STRING, STRINGleft))
+   | LET decs IN exp END   	     	    	     			(A.LetExp({decs=fixDecs(decs), body=exp, pos=LETleft}))
    | LPAREN expseq							(A.SeqExp(expseq))
-   | STRING 								(A.StringExp(STRING, STRINGleft))
    | funcallexp								(funcallexp)
    | MINUS exp %prec MINUS						(A.OpExp({left=A.IntExp(0), oper=A.MinusOp, right=exp, pos=MINUSleft}))
    | exp PLUS exp							(A.OpExp({left=exp1, oper=A.PlusOp, right=exp2, pos=exp1left}))
@@ -74,7 +74,7 @@ exp: NIL								(A.NilExp)
 
 funcallexp : ID LPAREN funcallTail					(A.CallExp({func=Symbol.symbol(ID), args=funcallTail, pos=IDleft}))
 
-funcallTail : LPAREN   	   	     	       				(nil)
+funcallTail : RPAREN   	   	     	       				(nil)
 	    | exp COMMA funcallTail					(exp :: funcallTail)
 
 expseq : RPAREN								(nil)
@@ -113,7 +113,7 @@ fundec : FUNCTION ID LPAREN tyfields RPAREN EQ exp			(A.FunctionDec({name=Symbol
        | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp		(A.FunctionDec({name=Symbol.symbol(ID1), params=tyfields, result=SOME(Symbol.symbol(ID2), ID2left), body=exp, pos=FUNCTIONleft}::nil))
 
 
-let_ : LET decs IN exp END   	     	    	     			(A.LetExp({decs=fixDecs(decs), body=exp, pos=LETleft}))
+
 
 
 
