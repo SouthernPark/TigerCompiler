@@ -1,6 +1,122 @@
 #+TITLE Parser with ML-Yacc
 #+DATE <2023-02-04 Sat>
 
+* conflicts
+
+This section includes shift-reduce or reduce-reduce conflicts we currently have and how we solve it.
+
+Conflicts usually happens in operator precedence. Below is the precedence of operator defined by the book:
+
+Unary minus (negation) has the highest precedence. Then operators *,/ have the next highest (tightest binding) precedence, followed by +,-, then by \=,<>,>,<,>=,<=, then by &, then by |.
+
+The operators * , / , + , - are all left-associative. The comparison operators do not associate, so a=b=c is not a legal expression, although a= (b=c) is legal.
+
+
+** shift-refuce conflicts
+
+*** PLUS and MINUS operator (associative property)
+
+We have the following grammar for plus and minus operator
+#+BEGIN_SRC
+exp -> exp + exp
+exp -> exp - exp
+#+END_SRC
+
+They may cause the following states:
+
+#+BEGIN_SRC
+
+exp -> exp + exp .
+exp -> exp . + exp
+
+exp -> exp - exp .
+exp -> exp . - exp
+
+#+END_SRC
+
+For plus and minus operator we want left associativity (1+2+3 => (1+2) + 3). So we should use %left in Yacc to denote this.
+
+And they should have the same precedence (1+2-3 => (1+2)-3 and 1-2+3 => (1-2)+3). So we write them in the same line.
+
+This will lead to the following:
+
+#+BEGIN_SRC
+
+%left PLUS MINUS
+
+#+END_SRC
+
+
+*** TIMES and DIVIDE operator (associative property and precedence)
+We have the following grammar for times and divide operator
+#+BEGIN_SRC
+exp -> exp * exp
+exp -> exp / exp
+#+END_SRC
+
+They may cause the following states:
+
+#+BEGIN_SRC
+
+exp -> exp * exp .
+exp -> exp . * exp
+
+exp -> exp / exp .
+exp -> exp . / exp
+
+#+END_SRC
+
+For tmies and divide operator we want left associativity (1*2*3 => (1*2) * 3). So we should use %left in Yacc to denote this.
+
+Also, they should have higer precedence than PLUS operator. In Yacc, we write them after PLUS to sppecify this.
+
+This will lead to the following:
+
+#+BEGIN_SRC
+
+%left PLUS MINUS
+%left TIMES DIVIDE
+
+#+END_SRC
+
+
+*** MINUS Unary operator
+
+In 1-2 and 1+2-3, we use the exp -> exp - exp rule to handle minus. But what about -2*3, which should be evaluated as (-2)*3 instead of -(2*3).
+
+We have the following grammar for times and divide operator
+#+BEGIN_SRC
+exp -> - exp
+#+END_SRC
+
+Minus unary usually happens when - is the first operator in the expression.
+
+Unary operator should have higer priority than any other operators. But MINUS is also used in exp - exp. To solve this, we use %prec. (From doc: The optional %prec consists of the keyword %prec followed by a terminal whose precedence should be used as the precedence of the rule.)
+
+So we could have the following in ML-yacc:
+#+BEGIN_SRC text
+
+  exp: MINUS exp %prec MINUS				()
+
+#+END_SRC
+
+
+
+*** other operators
+Given the precedence definition from the book, we have have the following ML-Yacc definition:
+
+#+BEGIN_SRC
+
+%left OR
+%left AND
+%nonassoc EQ NEQ GT LT GE LE
+%left PLUS MINUS
+%left TIMES DIVIDE
+
+exp: MINUS exp %prec MINUS                            ()
+
+#+END_SRC
+
 
 * File explaination
 
@@ -14,7 +130,14 @@
 * ML-Yacc note
 
 good resources:
+
 http://cs.wellesley.edu/~cs235/fall08/lectures/35_YACC_revised.pdf
+
+** ML-Yacc grammar
+
+http://www.smlnj.org/doc/ML-Yacc/mlyacc002.html
+
+in "2.2 Grammar"
 
 ** %value
 
