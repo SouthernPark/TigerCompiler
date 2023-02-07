@@ -87,6 +87,8 @@ opexp : MINUS exp %prec MINUS						(A.OpExp({left=A.IntExp(0), oper=A.MinusOp, r
    | exp LE exp								(A.OpExp({left=exp1, oper=A.LeOp, right=exp2, pos=exp1left}))
    | exp GT exp								(A.OpExp({left=exp1, oper=A.GtOp, right=exp2, pos=exp1left}))
    | exp GE exp								(A.OpExp({left=exp1, oper=A.GeOp, right=exp2, pos=exp1left}))
+   | exp AND exp							(A.IfExp({test=exp1, then'=exp2, else'=SOME(A.IntExp(0)), pos=exp1left}))
+   | exp OR exp 							(A.IfExp({test=exp1, then'=A.IntExp(1), else'=SOME(exp2), pos=exp1left}))
 
 funcallexp : ID LPAREN args RPAREN					(A.CallExp({func=Symbol.symbol(ID), args=args, pos=IDleft}))
 
