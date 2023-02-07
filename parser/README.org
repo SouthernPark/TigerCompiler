@@ -1,6 +1,182 @@
 #+TITLE Parser with ML-Yacc
 #+DATE <2023-02-04 Sat>
 
+* conflicts
+
+This section includes shift-reduce or reduce-reduce conflicts we currently have and how we solve it.
+
+Conflicts usually happens in operator precedence. Below is the precedence of operator defined by the book:
+
+Unary minus (negation) has the highest precedence. Then operators *,/ have the next highest (tightest binding) precedence, followed by +,-, then by \=,<>,>,<,>=,<=, then by &, then by |.
+
+The operators * , / , + , - are all left-associative. The comparison operators do not associate, so a=b=c is not a legal expression, although a= (b=c) is legal.
+
+
+** shift-refuce conflicts
+
+*** PLUS and MINUS operator (associative property)
+
+We have the following grammar for plus and minus operator
+#+BEGIN_SRC
+exp -> exp + exp
+exp -> exp - exp
+#+END_SRC
+
+They may cause the following states:
+
+#+BEGIN_SRC
+
+exp -> exp + exp .
+exp -> exp . + exp
+
+exp -> exp - exp .
+exp -> exp . - exp
+
+#+END_SRC
+
+For plus and minus operator we want left associativity (1+2+3 => (1+2) + 3). So we should use %left in Yacc to denote this.
+
+And they should have the same precedence (1+2-3 => (1+2)-3 and 1-2+3 => (1-2)+3). So we write them in the same line.
+
+This will lead to the following:
+
+#+BEGIN_SRC
+
+%left PLUS MINUS
+
+#+END_SRC
+
+
+*** TIMES and DIVIDE operator (associative property and precedence)
+We have the following grammar for times and divide operator
+#+BEGIN_SRC
+exp -> exp * exp
+exp -> exp / exp
+#+END_SRC
+
+They may cause the following states:
+
+#+BEGIN_SRC
+
+exp -> exp * exp .
+exp -> exp . * exp
+
+exp -> exp / exp .
+exp -> exp . / exp
+
+#+END_SRC
+
+For tmies and divide operator we want left associativity (1*2*3 => (1*2) * 3). So we should use %left in Yacc to denote this.
+
+Also, they should have higer precedence than PLUS operator. In Yacc, we write them after PLUS to sppecify this.
+
+This will lead to the following:
+
+#+BEGIN_SRC
+
+%left PLUS MINUS
+%left TIMES DIVIDE
+
+#+END_SRC
+
+
+*** MINUS Unary operator
+
+In 1-2 and 1+2-3, we use the exp -> exp - exp rule to handle minus. But what about -2*3, which should be evaluated as (-2)*3 instead of -(2*3).
+
+We have the following grammar for times and divide operator
+#+BEGIN_SRC
+exp -> - exp
+#+END_SRC
+
+Minus unary usually happens when - is the first operator in the expression.
+
+Unary operator should have higer priority than any other operators. But MINUS is also used in exp - exp. To solve this, we use %prec. (From doc: The optional %prec consists of the keyword %prec followed by a terminal whose precedence should be used as the precedence of the rule.)
+
+So we could have the following in ML-yacc:
+#+BEGIN_SRC text
+
+  exp: MINUS exp %prec MINUS				()
+
+#+END_SRC
+
+
+
+*** other operators
+Given the precedence definition from the book, we have have the following ML-Yacc definition:
+
+#+BEGIN_SRC
+
+%left OR
+%left AND
+%nonassoc EQ NEQ GT LT GE LE
+%left PLUS MINUS
+%left TIMES DIVIDE
+
+exp: MINUS exp %prec MINUS                            ()
+
+#+END_SRC
+
+
+*** TODO Conflict in array creation and math operator
+
+We get the following shift-reduce conflict between the "OF" terminal and math operator, as shown below:
+
+#+BEGIN_SRC
+state 101:
+
+        exp : ID LBRACK exp RBRACK OF exp .  (reduce by rule 11)
+        opexp : exp . PLUS exp
+        opexp : exp . MINUS exp
+        opexp : exp . TIMES exp
+        opexp : exp . DIVIDE exp
+        opexp : exp . EQ exp
+        opexp : exp . NEQ exp
+        opexp : exp . LT exp
+        opexp : exp . LE exp
+        opexp : exp . GT exp
+        opexp : exp . GE exp
+
+#+END_SRC
+
+The "OF" operator should have weeker precedence than PLUS, MINUS ... GE. We could use /%nonassoc OF/ to handle this.
+
+**** TODO Is there any other way to handle this ? (do not use precedence)
+
+
+*** TODO Conflict in between lvalue and record, array , call expression
+
+The rule result the conflicts is:
+#+BEGIN_SRC text
+
+  exp : lvalue
+      | ID LBRACE recfields RBRACE
+      | ID LBRACK exp RBRACK OF exp
+      | funcallexp
+
+  lvalue : ID
+
+  funcallexp : ID LPAREN args RPAREN
+
+#+END_SRC
+
+will lead to the following state:
+
+#+BEGIN_SRC
+error:  state 11: shift/reduce conflict (shift LBRACK, reduce by rule 36)
+
+state 11:
+
+        exp : ID . LBRACE recfields RBRACE
+        exp : ID . LBRACK exp RBRACK OF exp
+        lvalue : ID .  (reduce by rule 36)
+        funcallexp : ID . LPAREN args RPAREN
+
+#+END_SRC
+
+how to solve this conflict ?
+
+It seems that every time we saw ID followed by something, we'd like to treat it as String rather than reduce it to lvalue (which is reduced to A.var)
 
 * File explaination
 
@@ -14,7 +190,14 @@
 * ML-Yacc note
 
 good resources:
+
 http://cs.wellesley.edu/~cs235/fall08/lectures/35_YACC_revised.pdf
+
+** ML-Yacc grammar
+
+http://www.smlnj.org/doc/ML-Yacc/mlyacc002.html
+
+in "2.2 Grammar"
 
 ** %value
 
@@ -69,6 +252,8 @@ Do not unsderstand the escape field defined in many datatypes in "absyn.sml".
 
 Is the pos for ID ?
 
+
+
 *** TODO vardec nil init must use long form
 The following is the abstract syntax of vardec
 #+BEGIN_SRC text
@@ -81,8 +266,44 @@ If the initializing expression is nil(NilExp), then the long form must be used.
 
 Do we need to report error in parsing phase.
 
+*** TODO sequence expression
+
+The book defined sequence expression as: A sequence of *two or more* expressions, surrounded by parentheses and separated by semicolons (exp; exp; ... exp).
+
+So (exp) will not be sequence expression ?
+
+So the grammar could be written as /exp ; exp {;exp}/
+
+For (exp) we will just regard it as exp. So we get the following code in Yacc to handle this:
+#+BEGIN_SRC text
+  exp : LPAREN exp RPAREN                                                 (exp)
+      | LPAREN seqexp RPAREN                                              (A.SeqExp(seqexp))
+
+  seqexp : exp SEMICOLON exp seqexpTail                                   ((exp1, exp1left)::(exp2, exp2left)::seqexpTail)
+
+  seqexpTail : SEMICOLON exp seqexpTail                                   ((exp, expleft) :: seqexpTail)
+	     |                                                            (nil)
+#+END_SRC
+
+*** TODO Array and record assignment vs Normal Assignment
+
+Array and record assignment: when an array or record variable a is assigned a value b, then a references the same array or record as b
+
+Normal assignment: The assignment statement lvalue : = exp evaluates the lvalue, then evaluates the exp, then sets the contents of the lvalue to the result of the expression. Syntactically, := binds weaker than the boolean operators & and |. The assignment expression produces no value, so that (a: =b) +c is illegal
+
+
+Array and record assignment seems to be a lvalue to lvalue assignment, while normal assignment seems to be a lvalue to exp assignment.
+
+***** TODO How to handle := binds weaker than & and |
+exp: a := true & false should be parsed as a := (true & false) instead of (a := true) & false
+
+Seems assignment operator is non-associative like a := b := c is illegal (assignment expression produces no value).
+
+Maybe we can use /%nonassoc ASSIGN/ to handle this ?
+
 
 ** solved
+
 
 *** DONE mutual recusive func dec and type dec
 
@@ -140,6 +361,79 @@ We translate into the following (factoring) :
 #+END_SRC
 
 
+*** funcallexp
+The funcallexp has the following declarations:
+#+BEGIN_SRC
+funcallexp -> id()
+funcallexp -> id(exp{,exp})  # {,exp} means repeat ",exp" zero or more times
+#+END_SRC
+
+Inintially, I get the following code for this:
+#+BEGIN_SRC text
+  funcallexp : ID LPAREN funcallTail		()
+
+  funcallTail : RPAREN   				()
+	      | exp COMMA funcallTail		()
+#+END_SRC
+
+which is incorrect cause it can not express "func(1)" (it can expree func(1,) but not func(1)).
+
+The above is also incorret because it can match (func(1,2,) which should be illegal)
+
+Below maybe a good practice to write it:
+
+#+BEGIN_SRC text
+  funcallexp : ID LPAREN RPAREN				()
+	     | ID LPAREN exp funcallTail			()
+
+  funcallTail : RPAREN   	   				()
+	      | COMMA exp funcallTail			()
+#+END_SRC
+
+The above could match "func()", "func(1)", "func(1,2)".
+
+And will not match illegal function calls like "func(1,)", "func(1,2,)" ...
+
+Another approach would be:
+#+BEGIN_SRC text
+  funcallexp : ID LPAREN args RPAREN			()
+
+  args : exp argsTail     				()
+       | 	   						()
+
+  argsTail : COMMA  exp argsTail				()
+	   | 	     					()
+
+#+END_SRC
+The good aspect of this practive is args can be reused later.
+This approach is also used to define record type as below:
+
+#+BEGIN_SRC text
+  ty : LBRACE tyfields RBRACE					()
+
+  tyfields: ID COLON ID tyfieldsTail				()
+	  |    	      						()
+
+  tyfieldsTail: COMMA ID COLON ID tyfieldsTail			()
+	      | 	       	     					()
+
+
+#+END_SRC
+
+record type grammar is as below:
+
+#+BEGIN_SRC
+
+ty -> { tyfields }
+
+tyfields -> id:type_id {, id:type_id}
+
+#+END_SRC
+
+Both of these two approaches will not cause conflicts.
+
+
+
 * Error
 
 ** solved
@@ -159,6 +453,16 @@ tiger.grm.sml:221.23-224.5 Error: operator and operand do not agree [tycon misma
 you didn't define the output type of tydec in %non-term.
 In my case, I defined as "tydec of A.dec"
 
+*** 2
+#+BEGIN_SRC
+
+tiger.grm.sml:110.30-110.33 Error: syntax error: replacing  LET with  ASTERISK
+tiger.grm.sml:401.59-401.62 Error: syntax error: replacing  LET with  EQUALOP
+sources.cm:10.2-10.11 Error: syntax error
+
+#+END_SRC
+
+let is a keyword in sml. So we can not use it as the name of non-term. instead, we use let_
 
 
 
@@ -174,6 +478,11 @@ sources.cm:10.2-10.11 Error: syntax error
 let is a keyword in sml. So we can not use it as the name of non-term. instead, we use let_
 
 
+
+*** 3
+In "tiger.grm.desc", we have the following error:
+
+warning: rule <let_ : LET decs IN exp END > will never be reduced. This means this rule can not be reached from the start state. This happens because we did not connect the exp with let_ state. To solve this proble, we move the rule to exp.
 
 ** not solved
 
@@ -193,5 +502,15 @@ val it = false : bool
 The TypeDec constructor of the abstract syntax takes a list of type declarations, not just a single type. The intent is that this list is a maximal consecutive sequence of type declarations. Thus, functions declared by the same TypeDec can be mutually recursive.
 
 currently each dec list only contains one dec. In later phase, we will fix the decs.
+
+Drew suggests get the wrong decs first, then in let expression we fix all the wrong decs.
+
+For example: at first we have:
+
+decs = {fundec, fundec, vardec, tydec, tydec}
+
+after reduction form let expression (let ... in ... end), we fix this and decs become
+
+decs = {fundec，vardec, tydec}
 
 
