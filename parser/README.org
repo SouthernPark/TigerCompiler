@@ -1,6 +1,6 @@
 #+TITLE Parser with ML-Yacc
 #+DATE <2023-02-04 Sat>
-
+#+TODO: TODO INPROCESS DONE
 * conflicts
 
 This section includes shift-reduce or reduce-reduce conflicts we currently have and how we solve it.
@@ -118,7 +118,7 @@ exp: MINUS exp %prec MINUS                            ()
 #+END_SRC
 
 
-*** TODO Conflict in array creation and math operator
+*** DONE Conflict between array creation and math operator
 
 We get the following shift-reduce conflict between the "OF" terminal and math operator, as shown below:
 
@@ -143,8 +143,31 @@ The "OF" operator should have weeker precedence than PLUS, MINUS ... GE. We coul
 
 **** TODO Is there any other way to handle this ? (do not use precedence)
 
+*** DONE Conflicts between WHILE exp DO exp  and math operator
+We get the following shift-reduce conflict between the "OF" terminal and math operator, as shown below:
 
-*** TODO Conflict in between lvalue and record, array , call expression
+#+BEGIN_SRC
+state 88:
+        exp : WHILE exp DO exp .  (reduce by rule 17)
+        opexp : exp . PLUS exp
+        opexp : exp . MINUS exp
+        opexp : exp . TIMES exp
+        opexp : exp . DIVIDE exp
+        opexp : exp . EQ exp
+        opexp : exp . NEQ exp
+        opexp : exp . LT exp
+        opexp : exp . LE exp
+        opexp : exp . GT exp
+        opexp : exp . GE exp
+        opexp : exp . AND exp
+        opexp : exp . OR exp
+#+END_SRC
+
+One way to handle this, is to give "DO" a low precedence use %nonassoc.
+
+Another way to do this is to rewrite the /opexp : exp op exp/ to /opexp : exp expTail/ and /expTail : empty/ ....
+
+*** DONE Conflict in between lvalue and record, array , call expression
 
 The rule result the conflicts is:
 #+BEGIN_SRC text
@@ -177,6 +200,56 @@ state 11:
 how to solve this conflict ?
 
 It seems that every time we saw ID followed by something, we'd like to treat it as String rather than reduce it to lvalue (which is reduced to A.var)
+
+
+
+
+
+
+*** TODO IF exp THEN exp ELSE exp
+
+The shift reduce conflit is showing as below
+#+BEGIN_SRC text
+  exp: IF exp THEN exp . ELSE exp
+     | IF exp THEN exp .
+#+END_SRC
+
+Below is a demo of the conflicts on sentence:
+#+BEGIN_SRC
+if exp then if exp then exp else exp
+#+END_SRC
+
+if we choose to shift (every time we see a else we want to bind it with previous if ... then ...)
+#+BEGIN_SRC text
+  if exp then
+     if exp then exp
+     else exp
+#+END_SRC
+or if we choose to reduce (every time we see a if ... then ..., we want to reduce it to Abst first)
+#+BEGIN_SRC text
+  if exp then
+     if exp then exp
+  else exp
+#+END_SRC
+
+At first, I was tinking about using left facotr to resolve shift reduce conflit. But I find the conflict still exists because we could reduce from /IFtail : empty/. So the following will not work.
+
+#+BEGIN_SRC text
+  exp: IF exp THEN exp IFtail
+
+  IFtail : ELSE exp
+	 |
+#+END_SRC
+
+-------
+
+Currently, we will use precedence to solve it
+#+BEGIN_SRC
+%nonassoc OF ASSIGN DO THEN
+%nonassoc ELSE
+#+END_SRC
+
+The above denotes that ELSE has higer precedence than THEN, therefore we prefer shift rahter than reduce. (Actually it's not necessary to add this two, cause Yacc prefer shift by defalut)
 
 * File explaination
 
@@ -285,14 +358,17 @@ For (exp) we will just regard it as exp. So we get the following code in Yacc to
 	     |                                                            (nil)
 #+END_SRC
 
-*** TODO Array and record assignment vs Normal Assignment
+*** DONE Array and record assignment vs Normal Assignment
 
 Array and record assignment: when an array or record variable a is assigned a value b, then a references the same array or record as b
 
 Normal assignment: The assignment statement lvalue : = exp evaluates the lvalue, then evaluates the exp, then sets the contents of the lvalue to the result of the expression. Syntactically, := binds weaker than the boolean operators & and |. The assignment expression produces no value, so that (a: =b) +c is illegal
 
 
-Array and record assignment seems to be a lvalue to lvalue assignment, while normal assignment seems to be a lvalue to exp assignment.
++Array and record assignment seems to be a lvalue to lvalue assignment, while normal assignment seems to be a lvalue to exp assignment.+
+
+Now there is only one type of assignment: /lvalue = exp/ cause there is a VarExp (VarExp of var, and var is actually lvalue)
+
 
 ***** TODO How to handle := binds weaker than & and |
 exp: a := true & false should be parsed as a := (true & false) instead of (a := true) & false
