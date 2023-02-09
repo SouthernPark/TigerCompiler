@@ -22,9 +22,9 @@ fun fixDecs ((A.FunctionDec lst1) :: (A.FunctionDec lst2) ::l) = fixDecs(A.Funct
   | AND | OR | ASSIGN
   | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF
   | BREAK | NIL
-  | FUNCTION | VAR | TYPE
+  | FUNCTION | VAR | TYPE | UMINUS
 
-%nonterm  exp of A.exp | program of A.exp | decs of A.dec list | dec of A.dec | ty of A.ty | tydec of A.dec | vardec of A.dec | tyfields of A.field list | tyfieldsTail of A.field list | fundec of A.dec | lvalue of A.var | seqexp of ((A.exp * A.pos) list) | seqexpTail of ((A.exp * A.pos) list) |funcallexp of A.exp | args of A.exp list | argsTail of A.exp list | opexp of A.exp | recfields of (Symbol.symbol * A.exp * A.pos) list | recfieldsTail of (Symbol.symbol * A.exp * A.pos) list
+%nonterm  exp of A.exp | program of A.exp | decs of A.dec list | dec of A.dec | ty of A.ty | tydec of A.dec | vardec of A.dec | tyfields of A.field list | tyfieldsTail of A.field list | fundec of A.dec | lvalue of A.var | exps of ((A.exp * A.pos) list) | seqexp of ((A.exp * A.pos) list) | seqexpTail of ((A.exp * A.pos) list) |funcallexp of A.exp | args of A.exp list | argsTail of A.exp list | opexp of A.exp | recfields of (Symbol.symbol * A.exp * A.pos) list | recfieldsTail of (Symbol.symbol * A.exp * A.pos) list
 
 
 
@@ -52,6 +52,9 @@ fun fixDecs ((A.FunctionDec lst1) :: (A.FunctionDec lst2) ::l) = fixDecs(A.Funct
 %nonassoc EQ NEQ GT LT GE LE
 %left PLUS MINUS
 %left TIMES DIVIDE
+%left UMINUS
+%nonassoc ID
+%nonassoc LBRACE LBRACK LPAREN DOT
 
 %%
 
@@ -63,7 +66,7 @@ exp : NIL								(A.NilExp)
     | INT								(A.IntExp(INT))
     | STRING								(A.StringExp(STRING, STRINGleft))
     (*Let statements*)
-    | LET decs IN exp END   	     	    	     			(A.LetExp({decs=fixDecs(decs), body=exp, pos=LETleft}))
+    | LET decs IN exps END   	     	    	     			(A.LetExp({decs=fixDecs(decs), body=A.SeqExp(exps), pos=LETleft}))
     | LET decs IN END                                                   (A.LetExp({decs=decs, body=A.SeqExp([]), pos=LETleft}))
     (*Parentheses*)
     | LPAREN seqexp RPAREN						(A.SeqExp(seqexp))
@@ -91,7 +94,7 @@ recfields : ID EQ exp recfieldsTail					((Symbol.symbol(ID), exp, IDleft)::recfi
 recfieldsTail : COMMA ID EQ exp recfieldsTail				((Symbol.symbol(ID), exp, IDleft)::recfieldsTail)
 	      |	      	    						(nil)
 
-opexp : MINUS exp %prec MINUS						(A.OpExp({left=A.IntExp(0), oper=A.MinusOp, right=exp, pos=MINUSleft}))
+opexp : MINUS exp %prec UMINUS						(A.OpExp({left=A.IntExp(0), oper=A.MinusOp, right=exp, pos=MINUSleft}))
    | exp PLUS exp							(A.OpExp({left=exp1, oper=A.PlusOp, right=exp2, pos=exp1left}))
    | exp MINUS exp							(A.OpExp({left=exp1, oper=A.MinusOp, right=exp2, pos=exp1left}))
    | exp TIMES exp							(A.OpExp({left=exp1, oper=A.TimesOp, right=exp2, pos=exp1left}))
@@ -113,14 +116,19 @@ args : exp argsTail   	   	     	       				(exp :: argsTail)
 argsTail : COMMA exp argsTail						(exp :: argsTail)
 	 | 	     							(nil)
 
+exps : exp                              ([(exp, expleft)])
+    | seqexp                            (seqexp)
+
 seqexp : exp SEMICOLON exp seqexpTail					((exp1, exp1left)::(exp2, exp2left)::seqexpTail)
 
 seqexpTail : SEMICOLON exp seqexpTail					((exp, expleft) :: seqexpTail)
 	   | 	       	   						(nil)
 
-lvalue: ID								(A.SimpleVar(Symbol.symbol(ID), IDleft))
-      | lvalue DOT ID							(A.FieldVar(lvalue, Symbol.symbol(ID), lvalueleft))
-      | lvalue LBRACK exp RBRACK					(A.SubscriptVar(lvalue, exp, lvalueleft))
+lvalue: ID                              (A.SimpleVar(Symbol.symbol(ID), IDleft))
+      | ID DOT ID                       (A.FieldVar(A.SimpleVar(Symbol.symbol(ID1), IDleft), Symbol.symbol(ID2), ID1left))
+      | ID LBRACK exp RBRACK            (A.SubscriptVar(A.SimpleVar(Symbol.symbol(ID), IDleft), exp, IDleft))
+      | lvalue DOT ID                   (A.FieldVar(lvalue, Symbol.symbol(ID), lvalueleft))
+      | lvalue LBRACK exp RBRACK        (A.SubscriptVar(lvalue, exp, lvalueleft))
 
 decs: dec decs								(dec :: decs)
     | 	  								(nil)

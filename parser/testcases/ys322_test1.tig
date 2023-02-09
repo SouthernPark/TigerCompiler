@@ -1,7 +1,1 @@
-let
-    var x := -4
-    var y := a + 3 - 5
-    function plusone(c:int) =
-        print(c + 1)
-    in plusone(y)
-end
+b[i] := j

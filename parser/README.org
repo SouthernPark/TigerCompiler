@@ -560,6 +560,14 @@ In "tiger.grm.desc", we have the following error:
 
 warning: rule <let_ : LET decs IN exp END > will never be reduced. This means this rule can not be reached from the start state. This happens because we did not connect the exp with let_ state. To solve this proble, we move the rule to exp.
 
+*** 4
+When testing "b[i] := j", we have the following syntax error:
+
+syntax error: replacing ASSIGN with OF
+
+It's because the shift-reduce conflict does not know whether to reduce the ID to an lvalue or shift the bracket. Until we get to OF, it could either be a variable expression or an array expression.
+We should give LBRACE LBRACK LPAREN highest precedence. 
+
 ** not solved
 
 *** TODO typedec require list
