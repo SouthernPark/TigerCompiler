@@ -1,0 +1,10 @@
+/* test case for if then else */
+let
+
+in
+        if 1=1 then
+           if 2=2 then 2
+	else 3
+end
+
+

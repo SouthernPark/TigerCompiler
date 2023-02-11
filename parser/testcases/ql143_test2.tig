@@ -1,0 +1,10 @@
+/* test case for seqexp */
+let
+        var col := intArray [ N ] of 0
+in
+        try(x);
+        ((((try(y)))));
+        (try(0);try(4));
+        (try(0);try(1);try(2))
+end
+
