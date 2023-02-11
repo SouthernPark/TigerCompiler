@@ -1,0 +1,7 @@
+/* test case for nested seqexp */
+let
+        var col := intArray [ N ] of 0
+in
+        (try(0);(try(1);try(2);try(3));(try(4),try(5)))
+end
+

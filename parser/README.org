@@ -167,7 +167,7 @@ One way to handle this, is to give "DO" a low precedence use %nonassoc.
 
 Another way to do this is to rewrite the /opexp : exp op exp/ to /opexp : exp expTail/ and /expTail : empty/ ....
 
-*** DONE Conflict in between lvalue and record, array , call expression
+*** DONE Conflict between lvalue and record, array , call expression
 
 The rule result the conflicts is:
 #+BEGIN_SRC text
@@ -204,9 +204,7 @@ It seems that every time we saw ID followed by something, we'd like to treat it 
 
 
 
-
-
-*** TODO IF exp THEN exp ELSE exp
+*** DONE IF exp THEN exp ELSE exp
 
 The shift reduce conflit is showing as below
 #+BEGIN_SRC text
@@ -244,12 +242,66 @@ At first, I was tinking about using left facotr to resolve shift reduce conflit.
 -------
 
 Currently, we will use precedence to solve it
+
 #+BEGIN_SRC
 %nonassoc OF ASSIGN DO THEN
 %nonassoc ELSE
 #+END_SRC
 
 The above denotes that ELSE has higer precedence than THEN, therefore we prefer shift rahter than reduce. (Actually it's not necessary to add this two, cause Yacc prefer shift by defalut)
+
+
+*** DONE Conflicts between array assignment and array creation
+
+we have the following grammar which will cause conflicts:
+#+BEGIN_SRC text
+  lvalue : ID
+	 | lvalue LBRACK exp RBRACK
+	 | lvalue DOT ID
+  exp : ID LBRACK exp RBRACK OF exp
+  vardec : VAR ID ASSIGN exp
+#+END_SRC
+
+which will leads to the following state:
+#+BEGIN_SRC text
+exp : ID . LBRACK exp RBRACK OF exp
+lvalue : ID .  (reduce by rule 47)
+#+END_SRC
+
+We may use precedence (between LBRACK and ID) to solve this problem. But there is a contradiction.
+
+For example: if we have the following two sentences:
+#+BEGIN_SRC text
+  var col := intArray [ N ] of 0			(array creation)
+  col[i] = j 	      	     			(array assignment)
+#+END_SRC
+
+If we let LBRACK have higher precedence than ID, then array creation will work but array assignment will not work.
+
+If we let ID have higher precedence than LBRACK, then array assignment will work, but array creation will not work.
+
+How to solve it ?
+We include the rule for single-level lvalue:
+#+BEGIN_SRC text
+  lvalue : ID
+	 | lvalue LBRACK exp RBRACK
+	 | lvalue DOT ID
+	 | ID DOT ID
+	 | ID LBRACK exp RBRACK
+  exp : ID LBRACK exp RBRACK OF exp
+  vardec : VAR ID ASSIGN exp
+#+END_SRC
+
+The /ID LBRACK exp RBRACK/ added in lvalue actually solve the problem. When there is a conflict between ID and LBRACK, we always shift, but still keep the lvalue as a possibility in the state. So the state after see ID and LBRACK will become:
+
+#+BEGIN_SRC
+exp : ID LBRACK . exp RBRACK OF exp
+lvalue : ID LBRACK . exp RBRACK
+#+END_SRC
+
+Only when the parser see "OF" it starts to shift to exp otherwise it shifts to lvalue.
+
+
 
 * File explaination
 
@@ -566,7 +618,7 @@ When testing "b[i] := j", we have the following syntax error:
 syntax error: replacing ASSIGN with OF
 
 It's because the shift-reduce conflict does not know whether to reduce the ID to an lvalue or shift the bracket. Until we get to OF, it could either be a variable expression or an array expression.
-We should give LBRACE LBRACK LPAREN highest precedence. 
+We should give LBRACE LBRACK LPAREN highest precedence.
 
 ** not solved
 

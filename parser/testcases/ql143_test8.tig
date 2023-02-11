@@ -1,0 +1,9 @@
+/* test case for nil */
+let
+        var a : my_record := nil
+in
+        a := nil;
+        if a <> nil then 1;
+        if nil = nil then 2
+end
+

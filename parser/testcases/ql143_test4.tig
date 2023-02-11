@@ -1,0 +1,8 @@
+/* test case for mutual recursive (consecutive fundec) */
+let
+        function x() = y() + 1
+        function y() = x() + 1
+in
+        x()
+end
+

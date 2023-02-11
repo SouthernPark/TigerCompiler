@@ -1,0 +1,8 @@
+/* test case for if then else */
+let
+        var a : my_record := nil
+in
+        b := (((1+2)) * 3)
+end
+
+

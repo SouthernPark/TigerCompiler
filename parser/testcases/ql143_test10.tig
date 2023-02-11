@@ -1,0 +1,10 @@
+/* test case for if then else */
+let
+	var a : my_record := nil
+in
+	if 1=1 then
+	   (if 2=2 then 2)
+	else 3
+end
+
+
