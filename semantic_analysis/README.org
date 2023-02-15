@@ -1,0 +1,74 @@
+#+TITLE Semantic Analysis
+#+DATE <2023-02-13 Mon 15:21>
+#+TODO: TODO INPROCESS DONE
+
+Semantic Analysis includes maintaince of symbol table and type checking.
+
+* Requirements
+Write a type-checking phase for your compiler, a module /Semant/ containing a function
+#+BEGIN_SRC
+transProg : Absyn.exp -> unit
+#+END_SRC
+that type-checks an abstract syntax tree and produces any appropriate error messages about mismatching types or undeclared identifiers.
+
+Also provide the implementation of the /Env/ module described in this chapter.
+
+Make a module /Main/ that calls the parser, yielding an Absyn.exp, and then calls transProg on this expression.
+
+Part a. Implement a simple type-checker and declaration processor that does not handle recursive functions or recursive data types (forward references to functions or types need not be handled). Also don't bother to check that each break statement is within a for or while statement.
+
+Part b. Augment your simple type-checker to handle recursive (and mutually recursive) functions; (mutually) recursive type declarations; and correct nesting of break statements.
+
+
+
+* File description
+
+| file name  | description                                                       |
+| env.sml    | implement ENV sig and contains base symbol table                  |
+| semant.sml | contains code for type checking                                   |
+| main.sml   | Call the parser and transProg in semant.sml to do type checking   |
+
+All the other files are from previous parser.
+
+
+
+
+
+
+* issue
+
+** TODO access field defiend in env.sig
+
+we have /type access/ in the ENV signature, what's its use?
+
+I currently defiend it as /ref unit/.
+
+
+
+** TODO actual_ty in semant.sml
+The type in the VarEntry will sometimes be a "NAME type" (Program 5.7), and all the types returned from transExp should be "actual" types (with the names traced through to their underlying definitions). It is therefore useful to have a function, perhaps called actual_ty, to skip past all the NAMES
+
+The result will be a Types.ty that is not a NAME, though if it is a record or array type it might contain NAME types to describe its components.
+
+current implementation is:
+#+BEGIN_SRC
+fun actual_ty (Types.NAME(symbol, ref(SOME(t)))) = actual_ty  t
+  | actual_ty other_ty = other_ty
+
+#+END_SRC
+
+
+
+* TODOS
+
+** TODO finsih getBaseFuncEnv() in env.sml
+Tiger has some predefined functions listed in Appendix A like: flush, ord, chr, size and so on.
+
+We need to add them into the base symbol table.
+
+
+
+** TODO finish transProg: Absyn.exp -> unit in semant.sml
+
+** TODO finish trexp, transExp, and trvar
+
