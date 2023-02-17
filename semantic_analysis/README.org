@@ -1,6 +1,6 @@
 #+TITLE Semantic Analysis
 #+DATE <2023-02-13 Mon 15:21>
-#+TODO: TODO INPROCESS DONE
+#+TODO: TODO INPROCESS UNSURE DONE
 
 Semantic Analysis includes maintaince of symbol table and type checking.
 
@@ -13,7 +13,7 @@ that type-checks an abstract syntax tree and produces any appropriate error mess
 
 Also provide the implementation of the /Env/ module described in this chapter.
 
-Make a module /Main/ that calls the parser, yielding an Absyn.exp, and then calls transProg on this expression.
+Make a module./Main/ that calls the parser, yielding an Absyn.exp, and then calls transProg on this expression.
 
 Part a. Implement a simple type-checker and declaration processor that does not handle recursive functions or recursive data types (forward references to functions or types need not be handled). Also don't bother to check that each break statement is within a for or while statement.
 
@@ -23,15 +23,65 @@ Part b. Augment your simple type-checker to handle recursive (and mutually recur
 
 * File description
 
-| file name  | description                                                       |
-| env.sml    | implement ENV sig and contains base symbol table                  |
-| semant.sml | contains code for type checking                                   |
-| main.sml   | Call the parser and transProg in semant.sml to do type checking   |
+| file name     | description                               |
+| env.sml       | contains base symbol table                |
+| semant.sml    | contains code for type checking           |
+| main.sml      | Call the parser and do type checking      |
+| types.sml     | Actual type for Tiger                     |
+| translate.sml | Dummy module, will flesh out in chapter 7 |
 
 All the other files are from previous parser.
 
 
 
+
+
+
+* Tiger sub-typing
+
+Below is the lattice sub-typing we are gonna to use in our type checking.
+
+#+BEGIN_SRC
+                         +------------+
+                         |    unit    |
+                         +------------+
+                                |
+     +-----------------------------------------------------+
+     |                |                 |                  |
++----+--+         +---+----+        +---+----+         +---+---+
+|  int  |         | string |        | record |         | array |
++-------+         +--------+        +--------+         +-----/-+
+        \                \              |                 /
+         \                \         +---+-----+          /
+          \                \        |   nil   |         /
+           \                \       +---------+        /
+             \                \       /              /
+        +--------------------------------------------+
+        |               impossibility                |
+        +--------------------------------------------+
+#+END_SRC
+
+/break/ exp, /exit/ exp,and exp that will cause error will be given type /impossibility/. The reason we do this is:
++ allow exp like: if x=0 then exit() else 1 (exit() return type impossibility which is a subtype of int. Fine)
+  - exit()'s type will not be used cause the program will exit immediately
++ clean code for type checking. described in second issue
+
+unit type is used for type promoting. When type does match in the /if then else/ statement, for example if x == 0 return string else return int, we could promote them to unit. This is ok if we are not trying to use the result in any context. It's good to use them in statement that will produce side effect. If they are used in context, for example int + unit, the type checking will handle it.
+
+
+How do we achieve this in code ?
+
+(1) check if a type T1 is a sub-type of T2
+
+This is useful when we want to check type assignment
+
+Another example is, var x:some_record = nil. Cause nil is a subtype of all record type, so we could regard nil as a record. So this expression is correct.
+
+(2) find the least upper bound of two types
+
+This is useful when we deal with if ... then type1 else type2.
+
+We return the least upper bound of type1 and type2.
 
 
 
@@ -45,17 +95,43 @@ I currently defiend it as /ref unit/.
 
 
 
-** TODO actual_ty in semant.sml
+** UNSURE actual_ty in semant.sml
 The type in the VarEntry will sometimes be a "NAME type" (Program 5.7), and all the types returned from transExp should be "actual" types (with the names traced through to their underlying definitions). It is therefore useful to have a function, perhaps called actual_ty, to skip past all the NAMES
 
 The result will be a Types.ty that is not a NAME, though if it is a record or array type it might contain NAME types to describe its components.
 
-current implementation is:
-#+BEGIN_SRC
-fun actual_ty (Types.NAME(symbol, ref(SOME(t)))) = actual_ty  t
-  | actual_ty other_ty = other_ty
 
+When we want to reture a Tiger type in transExp and transVar, we may get a NAME type which is initially used as a type place holder. What we really want is a real Tiger type, thus we may need to remove NAME type by extracting the real type pointed by it.
+
+Also note that RECORD or ARRAY type may also have NAME type in it. We may need to remove NAME type inside them.
+
+Another thing to consider is, NAME type is defined as below:
+#+BEGIN_SRC
+datatype ty = NAME of Symbol.symbol * ty option ref
 #+END_SRC
+
+The type in NAME may be a reference to SOME(ty) or NONE. NONE will only occur in type declaration, when handle consecutive type decs. But after we go through all the type bodies, all these NONEs will all be filled with a SOME. In otherwords, it's impossible for us to see a NONE in NAME when we are doing transExp and transVar. So we do not need to worry actual_ty will handle the NONE case.
+
+
+
+
+** TODO what type to return when we have a error case
+
+For example, we have the following code where x is int type and y is string type
+#+BEGIN_SRC
+var s:string := x + y
+#+END_SRC
+
+The traditional way to do this that, we check y is not a int and report an error. To make process continue, we just regard x + y as int type. And another error will happen we try to assign int to string. Cascaded errors will report for just single error. Also the type int we return when error happens is not reasonable.
+
+A better way to handle this is introducing another type IMPOSSIBILITY. This type is regarded as subtype of all types. Regard error type as IMPOSSIBILITY does not break the compiling process because the compiling process has already broke if they have unmatched type.
+
+With this introduced types, we can do the following without corrupt our compiling process.
+
++ Regard exit() func return type as IMPOSSIBILITY
+  - This can handle the following code: /if x == 0 then exit() else 0/. For type checking, we need to guarantee exit() and 0 has the same type. IMPOSSIBILITY is a subtype of INT, so this program will pass type checking
++ Similarly, we can regard break return type as IMPOSSIBILITY
++ Regard error type as IMPOSSIBILITY.
 
 
 
@@ -71,4 +147,6 @@ We need to add them into the base symbol table.
 ** TODO finish transProg: Absyn.exp -> unit in semant.sml
 
 ** TODO finish trexp, transExp, and trvar
+
+
 
