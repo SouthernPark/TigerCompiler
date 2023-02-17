@@ -9,6 +9,7 @@ struct
 structure A = Absyn
 structure E = Env
 structure S = Symbol
+structure T = Types		  
 type venv = Env.enventry S.table
 type tenv = Types.ty S.table
 type expty = {exp: Translate.exp, ty: Types.ty}
@@ -58,17 +59,78 @@ fun checkSimpleVar(A.SimpleVar(id,pos), venv) = case S.look(venv,id) of
                                                   | NONE =>
                                                     (error pos ("undefined variable" ^ S.name id); {exp=(), ty=Types.INT})
 
+fun checkSameType({exp=exp1, ty=Types.INT},{exp=exp2, ty=Types.INT}, pos) = ()
+  | checkSameType({exp=exp1, ty=Types.STRING},{exp=exp2,ty = Types.STRING}, pos) = ()
+  | checkSameType({exp=exp1, ty=_}, {exp=exp2, ty=_}, pos) = error pos "type cannot be compared"
+
+fun checkEqual({exp=exp1, ty=Types.NIL},{exp=exp2, ty=Types.NIL}, pos) = ()
+  | checkEqual({exp=exp1, ty=Types.INT},{exp=exp2, ty=Types.INT}, pos) = ()
+  | checkEqual({exp=exp1, ty=Types.STRING},{exp=exp2, ty=Types.STRING},pos) = ()
+  | checkEqual({exp=exp1, ty=Types.NIL},{exp=exp2, ty=Types.RECORD(lst, ref1)}, pos) = ()
+  | checkEqual({exp=exp1, ty=Types.RECORD(lst, ref1)},{exp=exp2, ty=Types.NIL}, pos) = ()
+  | checkEqual({exp=exp1, ty=Types.RECORD(_, ref1)},{exp=exp2, ty=Types.RECORD(_, ref2)}, pos) =
+    if ref1 = ref2 then () else error pos "record type mismatch"
+  | checkEqual({exp=exp1, ty=Types.ARRAY(_, ref1)},{exp=exp2, ty=Types.ARRAY(_, ref2)}, pos) =
+    if ref1 = ref2 then () else error pos "array type mismatch"
+  | checkEqual({exp=exp1, ty=_}, {exp=exp2, ty=_}, pos) = error pos "eq/neq operation require same types"
+											   
+
 (*
 transExp (venv * tenv) -> Absyn.exp -> expty
 trexp: Absyn.exp -> expty
 trvar: Absyn.var -> expty
  *)
 fun transExp(venv, tenv) =
-    let
-      fun trexp (A.OpExp{left, oper=A.PlusOp, right, pos}) = (* Plus op expression: e1 + e2 *)
-          (checkInt(trexp left, pos); checkInt(trexp right, pos); {exp=(), ty=Types.INT})
-        | trexp (A.LetExp{decs,body,pos}) = (* let expression *)
-          let val {venv=venv', tenv=tenv'} = transDec(venv, tenv, decs) in transExp(venv', tenv') body end
+    let fun trexp (A.NilExp) = {exp=(), ty=Types.NIL}
+	  | trexp (A.IntExp(int)) = {exp=(), ty=Types.INT}
+	  | trexp (A.StringExp(string)) = {exp=(), ty=Types.STRING}
+	  | trexp (A.VarExp(var)) = trvar var
+           (* operators *)
+	  | trexp (A.OpExp{left, oper=A.PlusOp, right, pos}) = 
+            (checkInt(trexp left, pos); checkInt(trexp right, pos); {exp=(), ty=Types.INT})
+	  | trexp (A.OpExp{left, oper=A.MinusOp, right, pos}) =
+	    (checkInt(trexp left, pos); checkInt(trexp right, pos); {exp=(), ty=Types.INT})
+	  | trexp (A.OpExp{left, oper=A.TimesOp, right, pos}) =
+	    (checkInt(trexp left, pos); checkInt(trexp right, pos); {exp=(), ty=Types.INT})
+	  | trexp (A.OpExp{left, oper=A.DivideOp, right, pos}) =
+	    (checkInt(trexp left, pos); checkInt(trexp right, pos); {exp=(), ty=Types.INT})
+	  | trexp (A.OpExp{left, oper=A.GeOp, right, pos}) =
+	    (checkSameType(trexp left, trexp right, pos); {exp=(), ty=Types.INT})
+	  | trexp (A.OpExp{left, oper=A.GtOp, right, pos}) =
+	    (checkSameType(trexp left, trexp right, pos); {exp=(), ty=Types.INT})
+	  | trexp (A.OpExp{left, oper=A.LeOp, right, pos}) =
+	    (checkSameType(trexp left, trexp right, pos); {exp=(), ty=Types.INT})
+	  | trexp (A.OpExp{left, oper=A.LtOp, right, pos}) =
+	    (checkSameType(trexp left, trexp right, pos); {exp=(), ty=Types.INT})
+	  | trexp (A.OpExp{left, oper=A.EqOp, right, pos}) =
+	    (checkEqual(trexp left, trexp right, pos); {exp=(), ty=Types.INT})
+	  | trexp (A.OpExp{left, oper=A.NeqOp, right, pos}) =
+	    (checkEqual(trexp left, trexp right, pos); {exp=(), ty=Types.INT})
+	  (*boolean operator*)
+		
+	  (*Assign*)		
+	  | trexp (A.AssignExp{var, exp, pos}) =
+	    let val vartype = trvar var
+		val exptype = trexp exp
+	    in
+		(*check if the type of exp is a subtype of var*)
+		if (isSubTy(#ty(exptype), #ty(vartype))) then ({exp=(), ty=(#ty(vartype))})
+		else (error pos "assignment type mismatch"; {exp=(), ty=Types.IMPOSSIBILITY} )
+	    end
+		
+	   (* let expression *)
+          | trexp (A.LetExp{decs,body,pos}) =
+              let val {venv=venv', tenv=tenv'} = transDec(venv, tenv, decs)
+	      in transExp(venv', tenv') body
+	      end
+	  | trexp (A.SeqExp(explst)) =
+	    let fun checkExprLst [] = {exp=(), ty= Types.UNIT}
+		  | checkExprLst [(exp, pos)] = trexp exp
+		  | checkExprLst ((exp,pos)::l) = (trexp exp; checkExprLst l)
+	    in
+		checkExprLst explst
+	    end				
+		
 
       and trvar (A.SimpleVar(id,pos)) = (* check var binding exist : id *)
           checkSimpleVar(A.SimpleVar(id,pos), venv)
@@ -76,18 +138,25 @@ fun transExp(venv, tenv) =
     in
       trexp
     end
-and transDec(venv, tenv, A.VarDec{name, escape, typ=NONE, init, pos}) = (* var x := exp *)
-    let val {exp, ty} = transExp(venv, tenv, init)
-    in {tenv=tenv, venv=S.enter(venv, name, E.VarEntry{ty=ty})} end
+and transDec (venv, tenv, []) = {venv = venv, tenv = tenv}
+  | transDec (venv, tenv, decs) = 
+    let fun trdec(A.VarDec{name, escape, typ=NONE, init, pos}, {venv, tenv}) = (* var x := exp *)
+        let val {exp, ty} = transExp(venv, tenv) init
+        in {venv=S.enter(venv, name, E.VarEntry{ty=ty}), tenv=tenv} end
+    in
+	foldl trdec {venv=venv, tenv=tenv} decs
+    end
+    
 (*
 var x : type-id : = exp
 TODO: finish the typ = SOME(symbol, pos), need to check typ equal
 Also, initializing expressions of type NIL must be constrained by a RECORD type
  *)
+ (* | transDec(venv, tenv, ) =*)
 
-
-fun transProg(exp) = ()
+fun transProg(exp:A.exp):unit = (transExp (E.base_venv, E.base_tenv)(exp);())
 
 end
+
 
 

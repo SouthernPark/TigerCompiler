@@ -145,8 +145,19 @@ We need to add them into the base symbol table.
 
 
 ** TODO finish transProg: Absyn.exp -> unit in semant.sml
+call transExp to recursively type-checking the abstract syntax tree
 
-** TODO finish trexp, transExp, and trvar
+** TODO finish trexp, transExp, transDec and trvar
+transExp:
+	[x] NILExp, IntExp, StringExp,
+	[] CallExp
+	[x] OpExp 
+	[] RecordExp, ArrayExp
+	[x] SeqExp
+	[x] AssignExp
+	[] ForExp, WhileExp, BreakExp
+	[x] LetExp
+	
 
 
 
