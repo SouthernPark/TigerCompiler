@@ -51,14 +51,6 @@ struct
 
   fun checkInt({exp, ty}, pos) = if isSubTy(ty, T.INT) then () else error pos "integer required"
 
-  fun checkSimpleVar(A.SimpleVar(id,pos), venv) = case S.look(venv,id) of
-        SOME(E.VarEntry{ty}) => {exp=(), ty=actual_ty ty}
-      | SOME(E.FunEntry{formals, result}) =>
-        (error pos ("var " ^ (S.name id) ^ " should not be a func");
-          {exp=(), ty=T.IMPOSSIBILITY})
-      | NONE =>
-        (error pos ("undefined variable" ^ S.name id); {exp=(), ty=T.INT})
-
   fun checkSameType({exp=exp1, ty=T.INT},{exp=exp2, ty=T.INT}, pos) = ()
     | checkSameType({exp=exp1, ty=T.STRING},{exp=exp2,ty = T.STRING}, pos) = ()
     | checkSameType({exp=exp1, ty=_}, {exp=exp2, ty=_}, pos) = error pos "type cannot be compared"
@@ -133,8 +125,32 @@ trvar: Absyn.var -> expty
 		
 
         and trvar (A.SimpleVar(id,pos)) = (* check var binding exist : id *)
-            checkSimpleVar(A.SimpleVar(id,pos), venv)
-
+            (case S.look(venv,id) of
+                SOME(E.VarEntry{ty}) => {exp=(), ty=actual_ty ty}
+              | SOME(E.FunEntry{formals, result}) =>
+                (error pos ("var " ^ (S.name id) ^ " should not be a func");
+                  {exp=(), ty=T.IMPOSSIBILITY})
+              | NONE =>
+                (error pos ("undefined variable" ^ S.name id); {exp=(), ty=T.INT}))
+          | trvar (A.FieldVar(v,sym,pos)) = (* check v.sym type *)
+            let
+              val v_ty = #ty (trvar v)
+              fun getSymType([],sym,pos) = (error pos ("Symbol " ^ (S.name sym) ^ " wasn't found in the record"); {exp=(), ty=T.IMPOSSIBILITY})
+                | getSymType((symbol, sym_ty)::l,sym,pos) = 
+                  if S.name symbol = S.name sym 
+                  then {exp=(), ty=actual_ty sym_ty}
+                  else getSymType(l,sym,pos)
+            in
+              case v_ty of T.RECORD(fields_list,unique) => getSymType(fields_list,sym,pos)
+              | _ => (error pos ("None record type cannot find a field"); {exp=(), ty=T.IMPOSSIBILITY})
+            end
+          | trvar (A.SubscriptVar(v,exp,pos)) = (* check v[exp] type *)
+            let
+              val v_ty = #ty (trvar v)
+            in
+              case v_ty of T.ARRAY(array_ty, _) => (checkInt(trexp exp,pos); {exp=(), ty=actual_ty array_ty})
+              |  _ => (error pos ("None array type cannot be subscripted"); {exp=(), ty=T.IMPOSSIBILITY})
+            end
       in
         trexp
       end
