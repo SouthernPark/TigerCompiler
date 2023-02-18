@@ -162,7 +162,29 @@ trvar: Absyn.var -> expty
       in
         foldl trdec {venv=venv, tenv=tenv} decs
       end
-    
+  and transTy (tenv, ty) =  
+      case ty of A.NameTy(symbol, pos) => (
+            case S.look(tenv, symbol) of SOME(name_ty) => name_ty
+            | NONE => (error pos ("Undefined type " ^ S.name symbol); T.IMPOSSIBILITY)
+          )
+      | A.RecordTy(fields_list) => (
+          let
+            fun getFieldType(curr_field, result) = 
+                let
+                  val {name, escape, typ, pos} = curr_field
+                in
+                  case S.look(tenv, typ) of SOME(name_ty) => (name, name_ty)::result
+                  | NONE => (error pos ("Undefined type " ^ S.name typ); (name, T.IMPOSSIBILITY)::result)
+                end
+            val results = foldr getFieldType [] fields_list
+          in
+            T.RECORD(results, ref ())
+          end
+        )
+      | A.ArrayTy(symbol, pos) => (
+          case S.look(tenv, symbol) of SOME(name_ty) => T.ARRAY(name_ty, ref ())
+          | NONE => (error pos ("Undefined type " ^ S.name symbol); T.ARRAY(T.IMPOSSIBILITY, ref ()))
+        )
   (*
 var x : type-id : = exp
 TODO: finish the typ = SOME(symbol, pos), need to check typ equal
