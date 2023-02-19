@@ -159,6 +159,38 @@ trvar: Absyn.var -> expty
       let fun trdec(A.VarDec{name, escape, typ=NONE, init, pos}, {venv, tenv}) = (* var x := exp *)
             let val {exp, ty} = transExp(venv, tenv) init
             in {venv=S.enter(venv, name, E.VarEntry{ty=ty}), tenv=tenv} end
+          | trdec(A.TypeDec(typedecs), {venv, tenv}) = 
+            let
+              fun putHeaders(cur_tydec, tenv) = (* put all the headers in tenv -> tenv' *)
+                  let val {name, ty, pos} = cur_tydec
+                  in S.enter(tenv, name, T.NAME(name, ref NONE)) end
+              fun processBodies(cur_tydec, tenv) =  (* process all the bodies in tenv' *)
+                  let val {name, ty, pos} = cur_tydec
+                  in (* assignments to ref variables *)
+                    case S.look(tenv, name) of SOME(T.NAME(namety, unique)) => (unique := SOME(transTy(tenv, ty)); tenv)
+                    | _ => (error pos ("Undefined type " ^ S.name name); tenv)
+                  end
+              fun detectIllegalCycles([], tenv, typelist) = ()
+                | detectIllegalCycles(cur_tydec::l, tenv, typelist) = (* detect illegal cycles in type declarations *)
+                  let
+                    val {name, ty, pos} = cur_tydec
+                  in
+                    case S.look(tenv, name) of SOME(T.NAME(namety, unique)) => (
+                          case !unique of SOME(T.NAME(mutual_namety, mutual_unique)) => (
+                                if List.exists (fn cur_ty => S.name namety = S.name mutual_namety) typelist
+                                then error pos ("There's a illegal cycle in type declaration. ")
+                                else detectIllegalCycles(l, tenv, namety::typelist)
+                              )
+                          | _ => ()
+                        )
+                    | _ => ()
+                  end
+              val tenv' = foldl putHeaders tenv typedecs
+              val complete_tenv = foldl processBodies tenv' typedecs
+            in
+              detectIllegalCycles(typedecs, complete_tenv, []);
+              {venv=venv, tenv=complete_tenv}
+            end
       in
         foldl trdec {venv=venv, tenv=tenv} decs
       end
