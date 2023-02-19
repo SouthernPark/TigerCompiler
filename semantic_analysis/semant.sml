@@ -193,13 +193,13 @@ trvar: Absyn.var -> expty
                     in
                       case S.look(tenv, name) of SOME(T.NAME(namety, unique)) => (
                          case !unique of SOME(T.NAME(mutual_namety, mutual_unique)) => (
-                            if List.exists (fn cur_ty => S.name namety = S.name mutual_namety) typelist
+                            if List.exists (fn cur_ty => S.name cur_ty = S.name mutual_namety) typelist
                             then error pos ("There's a illegal cycle in type declaration. ")
                             else detectIllegalCycles(l, tenv, namety::typelist)
                           )
-                                       | _ => ()
-                       )
-                                               | _ => ()
+                          | _ => detectIllegalCycles(l, tenv, typelist)
+                      )
+                      | _ => (error pos ("Undefined type " ^ S.name name))
                     end
                 val tenv' = foldl putHeaders tenv typedecs
                 val complete_tenv = foldl processBodies tenv' typedecs
