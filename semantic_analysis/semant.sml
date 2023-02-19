@@ -179,7 +179,11 @@ trvar: Absyn.var -> expty
               let
                 fun putHeaders(cur_tydec, tenv) = (* put all the headers in tenv -> tenv' *)
                     let val {name, ty, pos} = cur_tydec
-                    in S.enter(tenv, name, T.NAME(name, ref NONE)) end
+                    in
+                      case S.look(tenv, name) of SOME(T.NAME(namety, unique)) => (
+                        error pos ("type " ^ S.name name ^ " is already defined before"); S.enter(tenv, name, T.NAME(name, ref NONE)))
+                      | _ => S.enter(tenv, name, T.NAME(name, ref NONE)) 
+                    end
                 fun processBodies(cur_tydec, tenv) =  (* process all the bodies in tenv' *)
                     let val {name, ty, pos} = cur_tydec
                     in (* assignments to ref variables *)
