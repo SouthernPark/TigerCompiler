@@ -135,6 +135,37 @@ With this introduced types, we can do the following without corrupt our compilin
 
 
 
+** DONE The line number in the error message is always 1
+
+The reason why this happens is we reset all the line number info after lexing in tiger.lex as below:
+#+BEGIN_SRC
+fun eof() = let
+                val pos = hd(!linePos)
+                val () = checkComment(!commentStartPos)
+                val () = checkString(!strStartPos)
+            in
+                reset();
+                ErrorMsg.reset();
+                Tokens.EOF(pos, pos)
+            end;
+#+END_SRC
+
+The reason why we need reset here is for lexing consecutively.
+One way to handle this is we put all thus reset in the main function before lexing.
+
+so we add /val _ = ErrorMsg.reset();/ in Parse.parse function in parse.sml.
+
+Now we can do consecutive parsing without affecting the line number in the type checking process.
+
+
+** TODO recursive type dec cycle should have at least one array or record in it
+The following
+#+BEGIN_SRC
+type d = e
+type e = d
+#+END_SRC
+should be rejected, but not
+
 * TODOS
 
 ** TODO finsih getBaseFuncEnv() in env.sml
@@ -151,13 +182,16 @@ call transExp to recursively type-checking the abstract syntax tree
 transExp:
 	[x] NILExp, IntExp, StringExp,
 	[] CallExp
-	[x] OpExp 
+	[x] OpExp
 	[] RecordExp, ArrayExp
 	[x] SeqExp
 	[x] AssignExp
 	[] ForExp, WhileExp, BreakExp
 	[x] LetExp
-	
+
+
+
+
 
 
 

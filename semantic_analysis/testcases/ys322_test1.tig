@@ -1,6 +1,8 @@
-let	
+let
 	type a = int
-    type b = a
-    type c = b
+    type b = array of c
+    type c = array of b
+    type d = e
+    type e = d
 in
 end
