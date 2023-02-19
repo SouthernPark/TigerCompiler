@@ -25,7 +25,6 @@ fun eof() = let
                 val () = checkString(!strStartPos)
             in
                 reset();
-                ErrorMsg.reset();
                 Tokens.EOF(pos, pos)
             end;
 

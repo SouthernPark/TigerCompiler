@@ -562,6 +562,31 @@ Both of these two approaches will not cause conflicts.
 
 
 
+*** DONE The line number in the error message is always 1
+
+The reason why this happens is we reset all the line number info after lexing in tiger.lex as below:
+#+BEGIN_SRC
+fun eof() = let
+                val pos = hd(!linePos)
+                val () = checkComment(!commentStartPos)
+                val () = checkString(!strStartPos)
+            in
+                reset();
+                ErrorMsg.reset();
+                Tokens.EOF(pos, pos)
+            end;
+#+END_SRC
+
+The reason why we need reset here is for lexing consecutively.
+One way to handle this is we put all thus reset in the main function before lexing.
+
+so we add /val _ = ErrorMsg.reset();/ in Parse.parse function in parse.sml.
+
+Now we can do consecutive parsing without affecting the line number in the type checking process.
+
+
+
+
 * Error
 
 ** solved

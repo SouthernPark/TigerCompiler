@@ -1,0 +1,7 @@
+let
+	var x:string := 1+1
+	var y := z
+	var m := 1 + y
+in
+end
+
