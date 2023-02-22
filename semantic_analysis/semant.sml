@@ -125,7 +125,6 @@ trvar: Absyn.var -> expty
                 val {exp=_, ty=else_ty} = trexp(else_exp)
                 val rt = actual_ty(leastUpperBound(actual_ty then_ty, actual_ty else_ty))
             in
-
               {exp=(), ty=rt}
             end
           (* Record *)
