@@ -1,0 +1,22 @@
+let
+	function a() = b()
+	function b() = a()
+
+	type tree = {key: int, children: treelist}
+	type treelist = {hd: tree, tl: treelist}
+
+	function treeLeaves(t : tree) : int =
+		 if t=nil then 1
+		 else treelistLeaves(t.children)
+
+	function treelistLeaves(L : treelist) : int =
+		 if L=nil then 0
+		 else treeLeaves(L.hd) + treelistLeaves(L.tl)
+
+
+
+
+in
+	a()
+end
+
