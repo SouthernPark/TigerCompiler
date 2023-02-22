@@ -4,6 +4,44 @@
 
 Semantic Analysis includes maintaince of symbol table and type checking.
 
+* check_list
+| name                    | finished | tested |
+| check actual_ty is used | no       |        |
+| base type               | no       |        |
+| base func               | no       |        |
+| RecordExp               | no       |        |
+| WhileExp                | no       |        |
+| ForExp                  | no       |        |
+| BreakExp                | no       |        |
+| ArrayExp                | no       |        |
+| SimpleVar               | yes      |        |
+| FieldVar                | yes      |        |
+| SubscriptVar            | yes      |        |
+| VarExp                  | yes      |        |
+| NilExp                  | yes      |        |
+| IntExp                  | yes      |        |
+| StringExp               | yes      |        |
+| CallExp                 | yes      |        |
+| PlusOp                  | yes      |        |
+| MinusOp                 | yes      |        |
+| TimesOp                 | yes      |        |
+| DivideOp                | yes      |        |
+| EqOp                    | yes      |        |
+| NeqOp                   | yes      |        |
+| LtOp                    | yes      |        |
+| LeOp                    | yes      |        |
+| GtOp                    | yes      |        |
+| GeOp                    | yes      |        |
+| SeqExp                  | yes      |        |
+| AssignExp               | yes      |        |
+| IfExp                   | yes      |        |
+| TypeDec                 | yes      |        |
+| NameTy                  | yes      |        |
+| RecordTy                | yes      |        |
+| ArrayTy                 | yes      |        |
+
+
+
 * Requirements
 Write a type-checking phase for your compiler, a module /Semant/ containing a function
 #+BEGIN_SRC
@@ -165,6 +203,27 @@ type d = e
 type e = d
 #+END_SRC
 should be rejected, but not
+
+
+** DONE what should the return type be set if the function is mutual recursive and does not give return type in its signature
+
+#+BEGIN_SRC
+fun a () = base case; 1 + b();
+fun b () =  base case; ...; a(); return int;
+#+END_SRC
+
+when put the headers into venv how should we know its return type is int ?
+
+if we do not know its return type is int, then how should we evaluate "1+b()" as correct ?
+
+In Tiger, if a function does not specify its return type explicitly in function signature, we regard it as unit type.
+
+Unit type is the super type of all other types, so what ever returns by the function is acceptable.
+
+As long as the return value is not used: for example: 1 + unit will report error.
+
+
+
 
 * TODOS
 

@@ -9,7 +9,8 @@ sig
   val look  : 'a table * symbol -> 'a option
 end
 
-structure Symbol :> SYMBOL =
+structure Symbol :> SYMBOL
+where type symbol = string * int =
 struct
 
 type symbol = string * int

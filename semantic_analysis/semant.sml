@@ -51,6 +51,10 @@ struct
   fun actual_ty (T.NAME(symbol, ref(SOME(t)))) = actual_ty  t
     | actual_ty other_ty = other_ty
 
+  fun getTyFromSym(tenv: E.ty S.table, (name, pos):S.symbol) =
+      case S.look(tenv, (name, pos)) of SOME (ty) => ty
+                                      | NONE => ((error pos ("Undefined Type: " ^ name)); T.IMPOSSIBILITY)
+
 
   fun checkInt({exp, ty}, pos) = if isSubTy(ty, T.INT) then () else error pos ((T.name ty) ^ " is not a subtype of INT")
 
@@ -65,7 +69,7 @@ struct
     | checkEqual({exp=exp1, ty=T.NIL},{exp=exp2, ty=NIL}, pos) = error pos "nil can not be compared with nil"
     | checkEqual({exp=exp1, ty=ty1},{exp=exp2, ty=ty2}, pos)  = if (isSubTy(ty1, ty2) orelse isSubTy(ty2, ty1))
                                                                 then ()
-                                                                else error pos ("Type: " ^ T.name(ty1) ^ " and " ^ T.name(ty2) ^ "can not be compared")
+                                                                else error pos ("Type: " ^ T.name(ty1) ^ " and " ^ T.name(ty2) ^ " can not be compared")
 
   (*
 transExp (venv * tenv) -> Absyn.exp -> expty
@@ -77,7 +81,7 @@ trvar: Absyn.var -> expty
           | trexp (A.IntExp(int)) = {exp=(), ty=T.INT}
           | trexp (A.StringExp(string)) = {exp=(), ty=T.STRING}
           | trexp (A.VarExp(var)) = trvar var
-          (* operators *)
+          (* math operators *)
           | trexp (A.OpExp{left, oper=A.PlusOp, right, pos}) =
             (checkInt(trexp left, pos); checkInt(trexp right, pos); {exp=(), ty=T.INT})
           | trexp (A.OpExp{left, oper=A.MinusOp, right, pos}) =
@@ -86,6 +90,7 @@ trvar: Absyn.var -> expty
             (checkInt(trexp left, pos); checkInt(trexp right, pos); {exp=(), ty=T.INT})
           | trexp (A.OpExp{left, oper=A.DivideOp, right, pos}) =
             (checkInt(trexp left, pos); checkInt(trexp right, pos); {exp=(), ty=T.INT})
+          (* comparison operators*)
           | trexp (A.OpExp{left, oper=A.GeOp, right, pos}) =
             (checkSameType(trexp left, trexp right, pos); {exp=(), ty=T.INT})
           | trexp (A.OpExp{left, oper=A.GtOp, right, pos}) =
@@ -99,6 +104,24 @@ trvar: Absyn.var -> expty
           | trexp (A.OpExp{left, oper=A.NeqOp, right, pos}) =
             (checkEqual(trexp left, trexp right, pos); {exp=(), ty=T.INT})
           (*boolean operator*)
+          (*if expression*)
+          | trexp (A.IfExp({test=test_exp, then'=then_exp, else'=NONE, pos=pos'})) =
+            let val {exp=_, ty=test_ty} = trexp(test_exp)
+                val () = if isSubTy(test_ty, T.INT) then ()
+                         else error pos' ("Type " ^ (T.name test_ty) ^ " is not a subtype of INT")
+            in
+              {exp=(), ty=T.UNIT} (* if expression with no else, returns no value *)
+            end
+          | trexp (A.IfExp({test=test_exp, then'=then_exp, else'=SOME(else_exp), pos=pos'})) =
+            let val {exp=_, ty=test_ty} = trexp(test_exp)
+                val () = if isSubTy(test_ty, T.INT) then ()
+                         else error pos' ("Type " ^ (T.name test_ty) ^ " is not a subtype of INT")
+                val {exp=_, ty=then_ty} = trexp(then_exp)
+                val {exp=_, ty=else_ty} = trexp(else_exp)
+                val rt = leastUpperBound(then_ty, else_ty)
+            in
+              {exp=(), ty=rt}
+            end
 
           (*Assign*)
           | trexp (A.AssignExp{var, exp, pos}) =
@@ -107,7 +130,31 @@ trvar: Absyn.var -> expty
             in
               (*check if the type of exp is a subtype of var*)
               if (isSubTy(#ty(exptype), #ty(vartype))) then ({exp=(), ty=(#ty(vartype))})
-              else (error pos "assignment type mismatch"; {exp=(), ty=T.IMPOSSIBILITY} )
+              else (error pos "assignment type mismatch"; {exp=(), ty=T.IMPOSSIBILITY})
+            end
+          (* call exp *)
+          | trexp (A.CallExp{func=name, args=exp_lst, pos=pos'}) =
+            let
+              fun checkParams(typ_lst, rt) =
+                  let
+                    fun helper([], []) = {exp=(), ty=rt} (* rt is the return type of the function *)
+                      | helper((exp_a::exp_l), [])  = (error pos' "Too many args"; {exp=(), ty=T.IMPOSSIBILITY})
+                      | helper([], (typ_a::typ_l))  = (error pos' "Too few args"; {exp=(), ty=T.IMPOSSIBILITY})
+                      | helper((exp_a::exp_l), (typ_a::typ_l)) =
+                        let val {exp=_, ty=exp_ty} = trexp(exp_a)
+                        in
+                          if isSubTy(exp_ty, typ_a) then helper(exp_l, typ_l)
+                          else (error pos' ("Arg type does not match: " ^ (T.name exp_ty) ^ " isn't a subtype of " ^ (T.name typ_a) ); {exp=(), ty=T.IMPOSSIBILITY})
+                        end
+                  in
+                    helper(exp_lst, typ_lst)
+                  end
+
+            in
+              case S.look(venv, name) of SOME(E.FunEntry{formals=typ_lst, result=rt}) => checkParams(typ_lst, rt)
+                                       | _ => ((error pos' ("Function " ^ (S.name name) ^ " is not defined")); {exp=(), ty=T.IMPOSSIBILITY})
+
+
             end
 
           (* let expression *)
@@ -207,6 +254,46 @@ trvar: Absyn.var -> expty
                 detectIllegalCycles(typedecs, complete_tenv, []);
                 {venv=venv, tenv=complete_tenv}
               end
+
+            | trdec (A.FunctionDec(fundecs), {venv, tenv}) =
+              let
+                (* enter each funcDec's signature (name, arg types) into venv *)
+                fun enterFunc(fundec:A.fundec, venv) =
+                    let val {name=name', params=fields, result=result', body=_, pos=pos'} = fundec
+                        val formals' = foldr (fn (field, ans) => (actual_ty (getTyFromSym(tenv, (#typ field))))::ans) [] fields
+                        val result_type = case result' of SOME(sym, pos1) => getTyFromSym(tenv, sym)
+                                                         | NONE => T.UNIT (*func does not specify return type is a procedure*)
+                        val entry = E.FunEntry{formals=formals', result=result_type}
+                    in
+                      S.enter(venv, name', entry)
+                    end
+                (* new venv contains all the signature of consecutive funcs*)
+                val venv' = foldl enterFunc venv fundecs
+                (* Parse the body of a func *)
+                fun parseBody ({name=name', params=params', result=result', body=body', pos=pos'}:A.fundec) =
+                    let
+                      fun putParamInVenv(param:A.field, ans_venv) =
+                          let val param_name = (#name param)
+                            val param_ty = getTyFromSym(tenv, (#typ param))
+                            val param_var = E.VarEntry({ty=param_ty})
+                          in
+                            S.enter(ans_venv, param_name, param_var)
+                          end
+
+                      (* put all the params in this func into venv *)
+                      val func_venv = foldr putParamInVenv venv' params'
+                      val {exp=body_exp, ty=body_rt} = transExp(func_venv, tenv) body'
+                      val rt = case result' of SOME(sym, pos1) => getTyFromSym(tenv, sym)
+                                                      | NONE => T.UNIT (* func does not specify return type is a procedure *)
+                    in
+                      if isSubTy(body_rt, rt) then ()
+                      else error pos' ((T.name body_rt) ^ " is not a subtype of " ^ (T.name rt))
+                    end
+              in
+                map parseBody fundecs;
+                {venv=venv', tenv=tenv}
+              end
+
       in
         foldl trdec {venv=venv, tenv=tenv} decs
       end
