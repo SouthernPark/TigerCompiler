@@ -13,6 +13,7 @@ struct
   type venv = Env.enventry S.table
   type tenv = T.ty S.table
   type expty = {exp: Translate.exp, ty: T.ty}
+  val loopDepth = ref 0		       
 
   val error = ErrorMsg.error (* open error defined in errormsg.sml *)
 
@@ -57,6 +58,7 @@ struct
 
 
   fun checkInt({exp, ty}, pos) = if isSubTy(ty, T.INT) then () else error pos ((T.name ty) ^ " is not a subtype of INT")
+  
 
   fun checkSameType({exp=exp1, ty=ty1},{exp=exp2, ty=ty2}, pos) =
       if (isSubTy(ty1, Types.INT) andalso isSubTy(ty2, Types.INT)) then ()
@@ -127,8 +129,10 @@ trvar: Absyn.var -> expty
             case S.look(tenv, typ) of SOME(record_ty) => (
               case actual_ty record_ty of T.RECORD(results, unique) => (
                 let
-                  fun checkFieldTy([], []) = () 
-                    | checkFieldTy(expfield::l1, result::l2) =
+                    fun checkFieldTy([], []) = ()
+		      | checkFieldTy(expfiles, []) = error pos "Extra fields for the record"
+		      | checkFieldTy([], results) = error pos "Lack fileds for the record"
+                      | checkFieldTy(expfield::l1, result::l2) =			
                     let
                       val (sym, exp, pos) = expfield
                       val (name, name_ty) = result
@@ -212,6 +216,35 @@ trvar: Absyn.var -> expty
             in
               checkExprLst explst
             end
+	  | trexp (A.ForExp{var, escape, lo, hi, body, pos}) =
+	    let val venv' = S.enter(venv, var, E.VarEntry{ty=T.INT})
+	    in		
+		checkInt(trexp lo, pos);
+		checkInt(trexp hi, pos);
+		loopDepth := !loopDepth+1;
+		if isSubTy(#ty(transExp(venv', tenv) body), T.UNIT)
+		then
+		    (loopDepth := !loopDepth-1; {exp=(), ty=T.UNIT})
+		else
+		    (loopDepth := !loopDepth-1;
+		     error pos "body of for loop should have UNIT/IMPOSIBILITY as return value";
+		    {exp=(),ty=T.IMPOSSIBILITY})		    		
+	    end
+	  | trexp (A.WhileExp{test, body, pos}) =
+	    (checkInt(trexp test, pos);
+	     loopDepth := !loopDepth+1;
+	     if isSubTy(#ty(trexp body), T.UNIT)
+	     then
+		 (loopDepth := !loopDepth-1;{exp=(), ty=T.UNIT})
+	     else
+		 (loopDepth := !loopDepth-1;
+		   error pos "body of while loop should have UNIT/IMPOSIBILITY as return value";
+		    {exp=(),ty=T.IMPOSSIBILITY})
+	    )
+	  | trexp (A.BreakExp(pos)) =
+	    (if !loopDepth >0 then () else error pos "not in a loop!";
+	     {exp=(), ty=T.UNIT})
+		
 
         and trvar (A.SimpleVar(id,pos)) = (* check var binding exist : id *)
             (case S.look(venv,id) of
