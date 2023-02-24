@@ -1,0 +1,7 @@
+let
+	type a = int
+    type b = array of a
+    var x := 10
+    var y := b [10] of 1
+in
+end

@@ -122,7 +122,49 @@ trvar: Absyn.var -> expty
             in
               {exp=(), ty=rt}
             end
-
+          (* Record *)
+          | trexp (A.RecordExp({fields, typ, pos})) = (
+            case S.look(tenv, typ) of SOME(record_ty) => (
+              case actual_ty record_ty of T.RECORD(results, unique) => (
+                let
+                  fun checkFieldTy([], []) = () 
+                    | checkFieldTy(expfield::l1, result::l2) =
+                    let
+                      val (sym, exp, pos) = expfield
+                      val (name, name_ty) = result
+                      fun checkName(sym, name) = 
+                        if S.name sym = S.name name then () 
+                        else (error pos ("Record field names don't match: " ^ S.name sym ^ " with " ^ S.name name))
+                      fun checkType(exp, name_ty) =
+                        if isSubTy(#ty(trexp exp), actual_ty name_ty) then ()
+                        else (error pos ("Record field types don't match"))
+                    in
+                      checkName(sym, name);
+                      checkType(exp, name_ty);
+                      checkFieldTy(l1, l2)
+                    end
+                in
+                  if List.length(fields) = List.length(results)
+                  then (checkFieldTy(fields, results); {exp=(), ty=T.RECORD(results, unique)})
+                  else (error pos ("Record fields lengths don't match."); {exp=(), ty=T.IMPOSSIBILITY})
+                end
+              )
+              | _ => (error pos ("Record type is undefined."); {exp=(), ty=T.IMPOSSIBILITY})
+            )
+            | _ => (error pos ("Record type is undefined."); {exp=(), ty=T.IMPOSSIBILITY})
+          )
+          (* Array *)
+          | trexp (A.ArrayExp({typ, size, init, pos})) = (
+              checkInt(trexp size, pos);
+              case S.look(tenv, typ) of SOME(array_ty) => (
+                case actual_ty array_ty of T.ARRAY(name_ty, unique) => (
+                  if isSubTy(#ty(trexp init), actual_ty name_ty) then ({exp=(), ty=T.ARRAY(name_ty, unique)})
+                  else (error pos ("Array types don't match."); {exp=(), ty=T.IMPOSSIBILITY})
+                )
+                | _ => (error pos ("Array type is undefined."); {exp=(), ty=T.IMPOSSIBILITY})
+              )
+              | _ => (error pos ("Array type is undefined."); {exp=(), ty=T.IMPOSSIBILITY})
+            )
           (*Assign*)
           | trexp (A.AssignExp{var, exp, pos}) =
             let val vartype = trvar var
@@ -218,7 +260,7 @@ trvar: Absyn.var -> expty
                 val {exp, ty} = transExp(venv, tenv) init
                 val var_ty = transTy(tenv, A.NameTy(symbol, pos1))
               in
-                if not (isSubTy(ty, var_ty)) then error pos2 (T.name(ty) ^ " is not a subtype of " ^ T.name(var_ty)) else ();
+                if not (isSubTy(ty, actual_ty var_ty)) then error pos2 (T.name(ty) ^ " is not a subtype of " ^ T.name(var_ty)) else ();
                 {venv=S.enter(venv, name, E.VarEntry{ty=var_ty}), tenv=tenv}
               end
             (* typedecs *)

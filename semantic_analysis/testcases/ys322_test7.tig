@@ -1,0 +1,6 @@
+/* specify the var type */
+let
+	type a = {name:string, age:int}
+	var x:a := a {name="xx", age=1000}
+in
+end
