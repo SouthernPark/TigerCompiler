@@ -1,0 +1,7 @@
+/* field types don't match */
+let
+	type a = {name:string, age:int}
+    type b = {name:int, age:int}
+	var x := b {name="Nobody", age=1000}
+in
+end

@@ -1,0 +1,9 @@
+/* wrong var type */
+let
+	type a = {name:string, age:int}
+    type b = {name:int, age:int}
+	var x:a := b {name="xx", age=1000}
+    var x:a := b {name=1, age=1000} 
+    var x:b := a {name="xx", age=1000}
+in
+end

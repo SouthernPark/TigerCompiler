@@ -1,0 +1,9 @@
+/* type error */
+let
+	type a = int
+    type b = array of a
+    var x := 10
+
+    var y := b [10] of "hello"
+in
+end

@@ -1,0 +1,5 @@
+let
+	type a = {name:string, age:int}
+	var x := a {name="Nobody", age=1000}
+in
+end
