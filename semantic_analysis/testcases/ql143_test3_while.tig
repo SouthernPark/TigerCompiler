@@ -4,10 +4,11 @@ in
 	while i<5 do
 	      (
 		let
-			function test_break() = break
+			function test_break() = 2
 			var j:= 2
 		in
-			j := j + 1
+			j := j + 1;
+			break
 		end
 		)
 
