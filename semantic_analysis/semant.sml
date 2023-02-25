@@ -13,7 +13,6 @@ struct
   type venv = Env.enventry S.table
   type tenv = T.ty S.table
   type expty = {exp: Translate.exp, ty: T.ty}
-  val loopDepth = ref 0
 
   val error = ErrorMsg.error (* open error defined in errormsg.sml *)
 
@@ -78,7 +77,7 @@ transExp (venv * tenv) -> Absyn.exp -> expty
 trexp: Absyn.exp -> expty
 trvar: Absyn.var -> expty
  *)
-  fun transExp(venv, tenv) =
+  fun transExp(venv, tenv, in_loop:(unit option)) =
       let fun trexp (A.NilExp) = {exp=(), ty=T.NIL}
           | trexp (A.IntExp(int)) = {exp=(), ty=T.INT}
           | trexp (A.StringExp(string)) = {exp=(), ty=T.STRING}
@@ -110,14 +109,14 @@ trvar: Absyn.var -> expty
           | trexp (A.IfExp({test=test_exp, then'=then_exp, else'=NONE, pos=pos'})) =
             let val {exp=_, ty=test_ty} = trexp(test_exp)
                 val () = if isSubTy(actual_ty test_ty, T.INT) then ()
-                         else error pos' ("Type " ^ (T.name test_ty) ^ " is not a subtype of INT")
+                         else error pos' ("If condition: yype " ^ (T.name test_ty) ^ " is not a subtype of INT")
             in
               {exp=(), ty=T.UNIT} (* if expression with no else, returns no value *)
             end
           | trexp (A.IfExp({test=test_exp, then'=then_exp, else'=SOME(else_exp), pos=pos'})) =
             let val {exp=_, ty=test_ty} = trexp(test_exp)
                 val () = if isSubTy(actual_ty test_ty, T.INT) then ()
-                         else error pos' ("Type " ^ (T.name (actual_ty test_ty)) ^ " is not a subtype of INT")
+                         else error pos' ("If condition: type " ^ (T.name (actual_ty test_ty)) ^ " is not a subtype of INT")
                 val {exp=_, ty=then_ty} = trexp(then_exp)
                 val {exp=_, ty=else_ty} = trexp(else_exp)
                 val rt = actual_ty(leastUpperBound(actual_ty then_ty, actual_ty else_ty))
@@ -141,7 +140,7 @@ trvar: Absyn.var -> expty
                         else (error pos ("Record field names don't match: " ^ S.name sym ^ " with " ^ S.name name))
                       fun checkType(exp, name_ty) =
                         if isSubTy(actual_ty(#ty(trexp exp)), actual_ty name_ty) then ()
-                        else (error pos ("Type " ^ T.name(#ty(trexp exp)) ^ " is not a subtype of " ^ T.name(actual_ty name_ty)))
+                        else (error pos ("Record: Type " ^ T.name(#ty(trexp exp)) ^ " is not a subtype of " ^ T.name(actual_ty name_ty)))
                     in
                       checkName(sym, name);
                       checkType(exp, name_ty);
@@ -207,7 +206,7 @@ trvar: Absyn.var -> expty
           | trexp (A.LetExp{decs,body,pos}) =
             let
               val {venv=venv', tenv=tenv'} = transDec(venv, tenv, decs)
-            in transExp(venv', tenv') body
+            in transExp(venv', tenv', NONE) body (* NONE -> break will not work in let exp inside loop *)
             end
           | trexp (A.SeqExp(explst)) =
             let fun checkExprLst [] = {exp=(), ty= T.UNIT}
@@ -217,31 +216,30 @@ trvar: Absyn.var -> expty
               checkExprLst explst
             end
 	  | trexp (A.ForExp{var, escape, lo, hi, body, pos}) =
-	    let val venv' = S.enter(venv, var, E.VarEntry{ty=T.INT})
+	    let
+              val () = checkInt(trexp lo, pos)
+              val () = checkInt(trexp hi, pos)
+              val venv' = S.enter(venv, var, E.VarEntry{ty=T.INT})
+              val {exp=body_exp, ty=body_ty} = transExp(venv', tenv, SOME ()) body (* body is inside loop *)
+              val () = if isSubTy(actual_ty(body_ty), T.UNIT) andalso isSubTy(T.UNIT,actual_ty(body_ty))
+                       then () else (error pos "body of for loop should have UNIT as return value")
 	    in
-		checkInt(trexp lo, pos);
-		checkInt(trexp hi, pos);
-		loopDepth := !loopDepth+1;
-		if isSubTy(actual_ty(#ty(transExp(venv', tenv) body)), T.UNIT) andalso isSubTy(T.UNIT,actual_ty(#ty(transExp(venv', tenv) body)))
-		then ()		   
-		else (error pos "body of for loop should have UNIT as return value");
-		loopDepth := !loopDepth-1;						
-                {exp=(),ty=T.UNIT}
+              {exp=(),ty=T.UNIT}
 	    end
 	  | trexp (A.WhileExp{test, body, pos}) =
-	    (checkInt(trexp test, pos);
-	     loopDepth := !loopDepth+1;
-	     if isSubTy(actual_ty(#ty(trexp body)), T.UNIT) andalso isSubTy(T.UNIT, actual_ty(#ty(trexp body)))
-	     then ()
-	     else (error pos ("body of while loop should have UNIT as return value, actual return " ^ (T.name(actual_ty(#ty(trexp body))))));
-	     loopDepth := !loopDepth-1;	     
-	     {exp=(),ty=T.UNIT}		 
-	    )
+            let
+              val () = checkInt(trexp test, pos)
+              val {exp=body_exp, ty=body_ty} = transExp(venv, tenv, SOME ()) body (* body is inside loop *)
+              val () = if isSubTy(actual_ty body_ty, T.UNIT) andalso isSubTy(T.UNIT, actual_ty body_ty)
+                       then ()
+                       else (error pos ("body of while loop should have UNIT as return value, actual return " ^ T.name(actual_ty body_ty)))
+            in
+              {exp=(),ty=T.UNIT}
+            end
 	  | trexp (A.BreakExp(pos)) =
-	    (if !loopDepth >0 then () else error pos "not in a loop!";
-	     {exp=(), ty=T.UNIT})
-
-
+            let val () = case in_loop of NONE => error pos "not in a loop!"
+                                       | SOME(_) => ()
+            in {exp=(), ty=T.UNIT} end
         and trvar (A.SimpleVar(id,pos)) = (* check var binding exist : id *)
             (case S.look(venv,id) of
                 SOME(E.VarEntry{ty}) => {exp=(), ty=actual_ty ty}
@@ -274,9 +272,9 @@ trvar: Absyn.var -> expty
       end
   and transDec (venv, tenv, []) = {venv = venv, tenv = tenv}
     | transDec (venv, tenv, decs) =
-          (* var dec with type not specified *)
+      (* var dec with type not specified *)
       let fun trdec(A.VarDec{name, escape, typ=NONE, init, pos}, {venv, tenv}) = (* var x := exp *)
-              let val {exp, ty} = transExp(venv, tenv) init
+              let val {exp, ty} = transExp(venv, tenv, NONE) init (* NONE -> new dec does not in loop *)
               in
                 (* var x := nil is not allowed *)
                 case ty of T.NIL => (error pos "NIL can not assign to var whose type is not determined";
@@ -286,7 +284,7 @@ trvar: Absyn.var -> expty
             (* var dec with type specified *)
             | trdec(A.VarDec{name, escape, typ=SOME(symbol, pos1), init, pos=pos2}, {venv, tenv})  =
               let
-                val {exp, ty} = transExp(venv, tenv) init
+                val {exp, ty} = transExp(venv, tenv, NONE) init (* NONE -> new dec does not in loop *)
                 val var_ty = actual_ty(transTy(tenv, A.NameTy(symbol, pos1)))
                 val ty = actual_ty(ty)
               in
@@ -316,8 +314,8 @@ trvar: Absyn.var -> expty
                             then error pos ("There's a illegal cycle in type declaration. ")
                             else detectIllegalCycles(l, tenv, namety::typelist)
                           )
-                          | _ => detectIllegalCycles(l, tenv, typelist)
-                      )
+                                       | _ => detectIllegalCycles(l, tenv, typelist)
+                       )
                       | _ => (error pos ("Undefined type " ^ S.name name))
                     end
                 val tenv' = foldl putHeaders tenv typedecs
@@ -346,20 +344,20 @@ trvar: Absyn.var -> expty
                     let
                       fun putParamInVenv(param:A.field, ans_venv) =
                           let val param_name = (#name param)
-                            val param_ty = actual_ty(getTyFromSym(tenv, (#typ param)))
-                            val param_var = E.VarEntry({ty=param_ty})
+                              val param_ty = actual_ty(getTyFromSym(tenv, (#typ param)))
+                              val param_var = E.VarEntry({ty=param_ty})
                           in
                             S.enter(ans_venv, param_name, param_var)
                           end
 
                       (* put all the params in this func into venv *)
                       val func_venv = foldr putParamInVenv venv' params'
-                      val {exp=body_exp, ty=body_rt} = transExp(func_venv, tenv) body'
+                      val {exp=body_exp, ty=body_rt} = transExp(func_venv, tenv, NONE) body' (* NONE -> new fundec, not in loop *)
                       val rt = case result' of SOME(sym, pos1) => actual_ty(getTyFromSym(tenv, sym))
-                                                      | NONE => T.UNIT (* func does not specify return type is a procedure *)
+                                             | NONE => T.UNIT (* func does not specify return type is a procedure *)
                     in
                       if isSubTy(actual_ty body_rt, actual_ty rt) then ()
-                      else error pos' ((T.name(actual_ty body_rt)) ^ " is not a subtype of " ^ (T.name(actual_ty rt)))
+                      else error pos' ("Function return: type "^ (T.name(actual_ty body_rt)) ^ " is not a subtype of type " ^ (T.name(actual_ty rt)))
                     end
               in
                 map parseBody fundecs;
@@ -374,33 +372,28 @@ trvar: Absyn.var -> expty
       case ty of A.NameTy(symbol, pos) =>
                  (case S.look(tenv, symbol) of SOME(name_ty) => actual_ty(name_ty)
                                              | NONE => (error pos ("Undefined type " ^ S.name symbol); T.IMPOSSIBILITY))
-      | A.RecordTy(fields_list) => (
-          let
-            fun getFieldType(curr_field, result) =
-                let
-                  val {name, escape, typ, pos} = curr_field
-                in
-                  case S.look(tenv, typ) of SOME(name_ty) => (name, actual_ty(name_ty))::result
-                  | NONE => (error pos ("Undefined type " ^ S.name typ); (name, T.UNIT)::result)
-                end
-            val results = foldr getFieldType [] fields_list
-          in
-            T.RECORD(results, ref ())
-          end
-        )
-      | A.ArrayTy(symbol, pos) => (
-          case S.look(tenv, symbol) of SOME(name_ty) => T.ARRAY(actual_ty(name_ty), ref ())
-          | NONE => (error pos ("Undefined type " ^ S.name symbol); T.ARRAY(T.UNIT, ref ()))
-        )
+               | A.RecordTy(fields_list) => (
+                 let
+                   fun getFieldType(curr_field, result) =
+                       let
+                         val {name, escape, typ, pos} = curr_field
+                       in
+                         case S.look(tenv, typ) of SOME(name_ty) => (name, actual_ty(name_ty))::result
+                                                 | NONE => (error pos ("Undefined type " ^ S.name typ); (name, T.UNIT)::result)
+                       end
+                   val results = foldr getFieldType [] fields_list
+                 in
+                   T.RECORD(results, ref ())
+                 end
+               )
+               | A.ArrayTy(symbol, pos) => (
+                 case S.look(tenv, symbol) of SOME(name_ty) => T.ARRAY(actual_ty(name_ty), ref ())
+                                            | NONE => (error pos ("Undefined type " ^ S.name symbol); T.ARRAY(T.UNIT, ref ()))
+               )
 
-  (*
-var x : type-id : = exp
-TODO: finish the typ = SOME(symbol, pos), need to check typ equal
-Also, initializing expressions of type NIL must be constrained by a RECORD type
- *)
-  (* | transDec(venv, tenv, ) =*)
 
-  fun transProg(exp:A.exp):unit = (transExp (E.base_venv, E.base_tenv)(exp);())
+  fun transProg(exp:A.exp):unit = (transExp (E.base_venv, E.base_tenv, NONE) (exp);())
+  (* NONE -> initially no loop *)
 
 end
 

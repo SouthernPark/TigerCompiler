@@ -3,6 +3,6 @@ let
   var x := 1
 in
   while (p > 3) do
-  	(while (if x < 2 then (p>1;break) else p>0) do
+  	(while (if x < 2 then (break;p>1) else (p>0)) do
 	   x := x + p)
 end
