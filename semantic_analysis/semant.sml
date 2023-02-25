@@ -13,7 +13,7 @@ struct
   type venv = Env.enventry S.table
   type tenv = T.ty S.table
   type expty = {exp: Translate.exp, ty: T.ty}
-  val loopDepth = ref 0		       
+  val loopDepth = ref 0
 
   val error = ErrorMsg.error (* open error defined in errormsg.sml *)
 
@@ -58,20 +58,20 @@ struct
 
 
   fun checkInt({exp, ty}, pos) = if isSubTy(ty, T.INT) then () else error pos ((T.name ty) ^ " is not a subtype of INT")
-  
+
 
   fun checkSameType({exp=exp1, ty=ty1},{exp=exp2, ty=ty2}, pos) =
-      if (isSubTy(ty1, Types.INT) andalso isSubTy(ty2, Types.INT)) then ()
+      if (isSubTy(actual_ty ty1, Types.INT) andalso isSubTy(actual_ty ty2, Types.INT)) then ()
       else
-        if (isSubTy(ty1, Types.STRING) andalso isSubTy(ty2, Types.STRING)) then ()
-        else error pos "type cannot be compared with <=, >=, >, <"
+        if (isSubTy(actual_ty ty1, Types.STRING) andalso isSubTy(actual_ty ty2, Types.STRING)) then ()
+        else error pos ("type " ^ (T.name (actual_ty ty1)) ^ " and type " ^ (T.name (actual_ty ty2)) ^"cannot be compared with <=, >=, >, <")
 
   fun checkEqual({exp=exp1, ty=T.UNIT},{exp=exp2, ty=_}, pos) = error pos "unit type can not be compared"
     | checkEqual({exp=exp1, ty=_},{exp=exp2, ty=T.UNIT}, pos) = error pos "unit type can not be compared"
     | checkEqual({exp=exp1, ty=T.NIL},{exp=exp2, ty=NIL}, pos) = error pos "nil can not be compared with nil"
-    | checkEqual({exp=exp1, ty=ty1},{exp=exp2, ty=ty2}, pos)  = if (isSubTy(ty1, ty2) orelse isSubTy(ty2, ty1))
+    | checkEqual({exp=exp1, ty=ty1},{exp=exp2, ty=ty2}, pos)  = if (isSubTy(actual_ty ty1, actual_ty ty2) orelse isSubTy(actual_ty ty2, actual_ty ty1))
                                                                 then ()
-                                                                else error pos ("Type: " ^ T.name(ty1) ^ " and " ^ T.name(ty2) ^ " can not be compared")
+                                                                else error pos ("Type: " ^ T.name(actual_ty ty1) ^ " and " ^ T.name(actual_ty ty2) ^ " can not be compared")
 
   (*
 transExp (venv * tenv) -> Absyn.exp -> expty
@@ -109,18 +109,18 @@ trvar: Absyn.var -> expty
           (*if expression*)
           | trexp (A.IfExp({test=test_exp, then'=then_exp, else'=NONE, pos=pos'})) =
             let val {exp=_, ty=test_ty} = trexp(test_exp)
-                val () = if isSubTy(test_ty, T.INT) then ()
+                val () = if isSubTy(actual_ty test_ty, T.INT) then ()
                          else error pos' ("Type " ^ (T.name test_ty) ^ " is not a subtype of INT")
             in
               {exp=(), ty=T.UNIT} (* if expression with no else, returns no value *)
             end
           | trexp (A.IfExp({test=test_exp, then'=then_exp, else'=SOME(else_exp), pos=pos'})) =
             let val {exp=_, ty=test_ty} = trexp(test_exp)
-                val () = if isSubTy(test_ty, T.INT) then ()
-                         else error pos' ("Type " ^ (T.name test_ty) ^ " is not a subtype of INT")
+                val () = if isSubTy(actual_ty test_ty, T.INT) then ()
+                         else error pos' ("Type " ^ (T.name (actual_ty test_ty)) ^ " is not a subtype of INT")
                 val {exp=_, ty=then_ty} = trexp(then_exp)
                 val {exp=_, ty=else_ty} = trexp(else_exp)
-                val rt = leastUpperBound(then_ty, else_ty)
+                val rt = actual_ty(leastUpperBound(actual_ty then_ty, actual_ty else_ty))
             in
               {exp=(), ty=rt}
             end
@@ -132,16 +132,16 @@ trvar: Absyn.var -> expty
                     fun checkFieldTy([], []) = ()
 		      | checkFieldTy(expfiles, []) = error pos "Extra fields for the record"
 		      | checkFieldTy([], results) = error pos "Lack fileds for the record"
-                      | checkFieldTy(expfield::l1, result::l2) =			
+                      | checkFieldTy(expfield::l1, result::l2) =
                     let
                       val (sym, exp, pos) = expfield
                       val (name, name_ty) = result
-                      fun checkName(sym, name) = 
-                        if S.name sym = S.name name then () 
+                      fun checkName(sym, name) =
+                        if S.name sym = S.name name then ()
                         else (error pos ("Record field names don't match: " ^ S.name sym ^ " with " ^ S.name name))
                       fun checkType(exp, name_ty) =
-                        if isSubTy(#ty(trexp exp), actual_ty name_ty) then ()
-                        else (error pos ("Record field types don't match"))
+                        if isSubTy(actual_ty(#ty(trexp exp)), actual_ty name_ty) then ()
+                        else (error pos ("Type " ^ T.name(#ty(trexp exp)) ^ " is not a subtype of " ^ T.name(actual_ty name_ty)))
                     in
                       checkName(sym, name);
                       checkType(exp, name_ty);
@@ -162,7 +162,7 @@ trvar: Absyn.var -> expty
               checkInt(trexp size, pos);
               case S.look(tenv, typ) of SOME(array_ty) => (
                 case actual_ty array_ty of T.ARRAY(name_ty, unique) => (
-                  if isSubTy(#ty(trexp init), actual_ty name_ty) then ({exp=(), ty=T.ARRAY(name_ty, unique)})
+                  if isSubTy(actual_ty(#ty(trexp init)), actual_ty name_ty) then ({exp=(), ty=T.ARRAY(actual_ty name_ty, unique)})
                   else (error pos ("Array types don't match."); {exp=(), ty=T.IMPOSSIBILITY})
                 )
                 | _ => (error pos ("Array type is undefined."); {exp=(), ty=T.IMPOSSIBILITY})
@@ -175,21 +175,21 @@ trvar: Absyn.var -> expty
               val exptype = trexp exp
             in
               (*check if the type of exp is a subtype of var*)
-              if (isSubTy(#ty(exptype), #ty(vartype))) then ({exp=(), ty=(#ty(vartype))})
-              else (error pos "assignment type mismatch"; {exp=(), ty=T.IMPOSSIBILITY})
+              if (isSubTy(actual_ty(#ty(exptype)) , actual_ty(#ty(vartype)))) then ({exp=(), ty=T.UNIT})
+              else (error pos "assignment type mismatch"; {exp=(), ty=T.UNIT})
             end
           (* call exp *)
           | trexp (A.CallExp{func=name, args=exp_lst, pos=pos'}) =
             let
               fun checkParams(typ_lst, rt) =
                   let
-                    fun helper([], []) = {exp=(), ty=rt} (* rt is the return type of the function *)
+                    fun helper([], []) = {exp=(), ty=(actual_ty rt)} (* rt is the return type of the function *)
                       | helper((exp_a::exp_l), [])  = (error pos' "Too many args"; {exp=(), ty=T.IMPOSSIBILITY})
                       | helper([], (typ_a::typ_l))  = (error pos' "Too few args"; {exp=(), ty=T.IMPOSSIBILITY})
                       | helper((exp_a::exp_l), (typ_a::typ_l)) =
                         let val {exp=_, ty=exp_ty} = trexp(exp_a)
                         in
-                          if isSubTy(exp_ty, typ_a) then helper(exp_l, typ_l)
+                          if isSubTy(actual_ty exp_ty, actual_ty typ_a) then helper(exp_l, typ_l)
                           else (error pos' ("Arg type does not match: " ^ (T.name exp_ty) ^ " isn't a subtype of " ^ (T.name typ_a) ); {exp=(), ty=T.IMPOSSIBILITY})
                         end
                   in
@@ -218,22 +218,22 @@ trvar: Absyn.var -> expty
             end
 	  | trexp (A.ForExp{var, escape, lo, hi, body, pos}) =
 	    let val venv' = S.enter(venv, var, E.VarEntry{ty=T.INT})
-	    in		
+	    in
 		checkInt(trexp lo, pos);
 		checkInt(trexp hi, pos);
 		loopDepth := !loopDepth+1;
-		if isSubTy(#ty(transExp(venv', tenv) body), T.UNIT)
+		if isSubTy(actual_ty(#ty(transExp(venv', tenv) body)), T.UNIT)
 		then
 		    (loopDepth := !loopDepth-1; {exp=(), ty=T.UNIT})
 		else
 		    (loopDepth := !loopDepth-1;
 		     error pos "body of for loop should have UNIT/IMPOSIBILITY as return value";
-		    {exp=(),ty=T.IMPOSSIBILITY})		    		
+		    {exp=(),ty=T.IMPOSSIBILITY})
 	    end
 	  | trexp (A.WhileExp{test, body, pos}) =
 	    (checkInt(trexp test, pos);
 	     loopDepth := !loopDepth+1;
-	     if isSubTy(#ty(trexp body), T.UNIT)
+	     if isSubTy(actual_ty(#ty(trexp body)), T.UNIT)
 	     then
 		 (loopDepth := !loopDepth-1;{exp=(), ty=T.UNIT})
 	     else
@@ -244,19 +244,19 @@ trvar: Absyn.var -> expty
 	  | trexp (A.BreakExp(pos)) =
 	    (if !loopDepth >0 then () else error pos "not in a loop!";
 	     {exp=(), ty=T.UNIT})
-		
+
 
         and trvar (A.SimpleVar(id,pos)) = (* check var binding exist : id *)
             (case S.look(venv,id) of
                 SOME(E.VarEntry{ty}) => {exp=(), ty=actual_ty ty}
               | SOME(E.FunEntry{formals, result}) =>
-                (error pos ("var " ^ (S.name id) ^ " should not be a func");
+                (error pos ("var " ^ (S.name id) ^ " should be a variable rather than a func");
                   {exp=(), ty=T.IMPOSSIBILITY})
               | NONE =>
                 (error pos ("undefined variable " ^ S.name id); {exp=(), ty=T.INT}))
           | trvar (A.FieldVar(v,sym,pos)) = (* check v.sym type *)
             let
-              val v_ty = #ty (trvar v)
+              val v_ty = actual_ty(#ty (trvar v))
               fun getSymType([],sym,pos) = (error pos ("Symbol " ^ (S.name sym) ^ " wasn't found in the record"); {exp=(), ty=T.IMPOSSIBILITY})
                 | getSymType((symbol, sym_ty)::l,sym,pos) =
                   if S.name symbol = S.name sym
@@ -268,7 +268,7 @@ trvar: Absyn.var -> expty
             end
           | trvar (A.SubscriptVar(v,exp,pos)) = (* check v[exp] type *)
             let
-              val v_ty = #ty (trvar v)
+              val v_ty = actual_ty(#ty (trvar v))
             in
               case v_ty of T.ARRAY(array_ty, _) => (checkInt(trexp exp,pos); {exp=(), ty=actual_ty array_ty})
               |  _ => (error pos ("None array type cannot be subscripted"); {exp=(), ty=T.IMPOSSIBILITY})
@@ -291,9 +291,10 @@ trvar: Absyn.var -> expty
             | trdec(A.VarDec{name, escape, typ=SOME(symbol, pos1), init, pos=pos2}, {venv, tenv})  =
               let
                 val {exp, ty} = transExp(venv, tenv) init
-                val var_ty = transTy(tenv, A.NameTy(symbol, pos1))
+                val var_ty = actual_ty(transTy(tenv, A.NameTy(symbol, pos1)))
+                val ty = actual_ty(ty)
               in
-                if not (isSubTy(ty, actual_ty var_ty)) then error pos2 (T.name(ty) ^ " is not a subtype of " ^ T.name(var_ty)) else ();
+                if not (isSubTy(ty, var_ty)) then error pos2 (T.name(ty) ^ " is not a subtype of " ^ T.name(var_ty)) else ();
                 {venv=S.enter(venv, name, E.VarEntry{ty=var_ty}), tenv=tenv}
               end
             (* typedecs *)
@@ -336,7 +337,7 @@ trvar: Absyn.var -> expty
                 fun enterFunc(fundec:A.fundec, venv) =
                     let val {name=name', params=fields, result=result', body=_, pos=pos'} = fundec
                         val formals' = foldr (fn (field, ans) => (actual_ty (getTyFromSym(tenv, (#typ field))))::ans) [] fields
-                        val result_type = case result' of SOME(sym, pos1) => getTyFromSym(tenv, sym)
+                        val result_type = case result' of SOME(sym, pos1) => actual_ty(getTyFromSym(tenv, sym))
                                                          | NONE => T.UNIT (*func does not specify return type is a procedure*)
                         val entry = E.FunEntry{formals=formals', result=result_type}
                     in
@@ -349,7 +350,7 @@ trvar: Absyn.var -> expty
                     let
                       fun putParamInVenv(param:A.field, ans_venv) =
                           let val param_name = (#name param)
-                            val param_ty = getTyFromSym(tenv, (#typ param))
+                            val param_ty = actual_ty(getTyFromSym(tenv, (#typ param)))
                             val param_var = E.VarEntry({ty=param_ty})
                           in
                             S.enter(ans_venv, param_name, param_var)
@@ -358,11 +359,11 @@ trvar: Absyn.var -> expty
                       (* put all the params in this func into venv *)
                       val func_venv = foldr putParamInVenv venv' params'
                       val {exp=body_exp, ty=body_rt} = transExp(func_venv, tenv) body'
-                      val rt = case result' of SOME(sym, pos1) => getTyFromSym(tenv, sym)
+                      val rt = case result' of SOME(sym, pos1) => actual_ty(getTyFromSym(tenv, sym))
                                                       | NONE => T.UNIT (* func does not specify return type is a procedure *)
                     in
-                      if isSubTy(body_rt, rt) then ()
-                      else error pos' ((T.name body_rt) ^ " is not a subtype of " ^ (T.name rt))
+                      if isSubTy(actual_ty body_rt, actual_ty rt) then ()
+                      else error pos' ((T.name(actual_ty body_rt)) ^ " is not a subtype of " ^ (T.name(actual_ty rt)))
                     end
               in
                 map parseBody fundecs;
@@ -375,7 +376,7 @@ trvar: Absyn.var -> expty
 
   and transTy (tenv, ty) =
       case ty of A.NameTy(symbol, pos) =>
-                 (case S.look(tenv, symbol) of SOME(name_ty) => name_ty
+                 (case S.look(tenv, symbol) of SOME(name_ty) => actual_ty(name_ty)
                                              | NONE => (error pos ("Undefined type " ^ S.name symbol); T.IMPOSSIBILITY))
       | A.RecordTy(fields_list) => (
           let
@@ -383,8 +384,8 @@ trvar: Absyn.var -> expty
                 let
                   val {name, escape, typ, pos} = curr_field
                 in
-                  case S.look(tenv, typ) of SOME(name_ty) => (name, name_ty)::result
-                  | NONE => (error pos ("Undefined type " ^ S.name typ); (name, T.IMPOSSIBILITY)::result)
+                  case S.look(tenv, typ) of SOME(name_ty) => (name, actual_ty(name_ty))::result
+                  | NONE => (error pos ("Undefined type " ^ S.name typ); (name, T.UNIT)::result)
                 end
             val results = foldr getFieldType [] fields_list
           in
@@ -392,8 +393,8 @@ trvar: Absyn.var -> expty
           end
         )
       | A.ArrayTy(symbol, pos) => (
-          case S.look(tenv, symbol) of SOME(name_ty) => T.ARRAY(name_ty, ref ())
-          | NONE => (error pos ("Undefined type " ^ S.name symbol); T.ARRAY(T.IMPOSSIBILITY, ref ()))
+          case S.look(tenv, symbol) of SOME(name_ty) => T.ARRAY(actual_ty(name_ty), ref ())
+          | NONE => (error pos ("Undefined type " ^ S.name symbol); T.ARRAY(T.UNIT, ref ()))
         )
 
   (*
