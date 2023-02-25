@@ -222,24 +222,20 @@ trvar: Absyn.var -> expty
 		checkInt(trexp lo, pos);
 		checkInt(trexp hi, pos);
 		loopDepth := !loopDepth+1;
-		if isSubTy(actual_ty(#ty(transExp(venv', tenv) body)), T.UNIT)
-		then
-		    (loopDepth := !loopDepth-1; {exp=(), ty=T.UNIT})
-		else
-		    (loopDepth := !loopDepth-1;
-		     error pos "body of for loop should have UNIT/IMPOSIBILITY as return value";
-		    {exp=(),ty=T.IMPOSSIBILITY})
+		if isSubTy(actual_ty(#ty(transExp(venv', tenv) body)), T.UNIT) andalso isSubTy(T.UNIT,actual_ty(#ty(transExp(venv', tenv) body)))
+		then ()		   
+		else (error pos "body of for loop should have UNIT as return value");
+		loopDepth := !loopDepth-1;						
+                {exp=(),ty=T.UNIT}
 	    end
 	  | trexp (A.WhileExp{test, body, pos}) =
 	    (checkInt(trexp test, pos);
 	     loopDepth := !loopDepth+1;
-	     if isSubTy(actual_ty(#ty(trexp body)), T.UNIT)
-	     then
-		 (loopDepth := !loopDepth-1;{exp=(), ty=T.UNIT})
-	     else
-		 (loopDepth := !loopDepth-1;
-		   error pos "body of while loop should have UNIT/IMPOSIBILITY as return value";
-		    {exp=(),ty=T.IMPOSSIBILITY})
+	     if isSubTy(actual_ty(#ty(trexp body)), T.UNIT) andalso isSubTy(T.UNIT, actual_ty(#ty(trexp body)))
+	     then ()
+	     else (error pos ("body of while loop should have UNIT as return value, actual return " ^ (T.name(actual_ty(#ty(trexp body))))));
+	     loopDepth := !loopDepth-1;	     
+	     {exp=(),ty=T.UNIT}		 
 	    )
 	  | trexp (A.BreakExp(pos)) =
 	    (if !loopDepth >0 then () else error pos "not in a loop!";

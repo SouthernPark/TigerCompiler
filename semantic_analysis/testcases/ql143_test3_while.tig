@@ -7,7 +7,7 @@ in
 			function test_break() = break
 			var j:= 2
 		in
-			j
+			j := j + 1
 		end
 		)
 
