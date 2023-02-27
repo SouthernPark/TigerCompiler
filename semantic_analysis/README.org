@@ -6,14 +6,14 @@ Semantic Analysis includes maintaince of symbol table and type checking.
 
 * check_list
 | name                    | finished | tested |
-| check actual_ty is used | no       |        |
-| base type               | no       |        |
-| base func               | no       |        |
-| RecordExp               | no       |        |
-| WhileExp                | no       |        |
-| ForExp                  | no       |        |
-| BreakExp                | no       |        |
-| ArrayExp                | no       |        |
+| check actual_ty is used | yes      |        |
+| base type               | yes      |        |
+| base func               | yes      |        |
+| RecordExp               | yes      |        |
+| WhileExp                | yes      |        |
+| ForExp                  | yes      |        |
+| BreakExp                | yes      |        |
+| ArrayExp                | yes      |        |
 | SimpleVar               | yes      |        |
 | FieldVar                | yes      |        |
 | SubscriptVar            | yes      |        |
