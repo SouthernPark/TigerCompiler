@@ -63,7 +63,7 @@ struct
       if (isSubTy(actual_ty ty1, Types.INT) andalso isSubTy(actual_ty ty2, Types.INT)) then ()
       else
         if (isSubTy(actual_ty ty1, Types.STRING) andalso isSubTy(actual_ty ty2, Types.STRING)) then ()
-        else error pos ("type " ^ (T.name (actual_ty ty1)) ^ " and type " ^ (T.name (actual_ty ty2)) ^"cannot be compared with <=, >=, >, <")
+        else error pos ("type " ^ (T.name (actual_ty ty1)) ^ " and type " ^ (T.name (actual_ty ty2)) ^" cannot be compared with <=, >=, >, <")
 
   fun checkEqual({exp=exp1, ty=T.UNIT},{exp=exp2, ty=_}, pos) = error pos "unit type can not be compared"
     | checkEqual({exp=exp1, ty=_},{exp=exp2, ty=T.UNIT}, pos) = error pos "unit type can not be compared"
@@ -375,7 +375,7 @@ trvar: Absyn.var -> expty
 
   and transTy (tenv, ty) =
       case ty of A.NameTy(symbol, pos) =>
-                 (case S.look(tenv, symbol) of SOME(name_ty) => actual_ty(name_ty)
+                 (case S.look(tenv, symbol) of SOME(name_ty) => name_ty
                                              | NONE => (error pos ("Undefined type " ^ S.name symbol); T.IMPOSSIBILITY))
                | A.RecordTy(fields_list) => (
                  let
