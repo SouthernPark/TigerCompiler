@@ -1,0 +1,263 @@
+error test cases
+
+test10.tig
+/* error : body of while not unit */
+while(10 > 5) do 5+6
+
+test11.tig
+/* error hi expr is not int, and index variable erroneously assigned to.  */
+for i:=10 to " " do 
+	i := i - 1
+
+test13.tig
+/* error: comparison of incompatible types */
+
+3 > "df"
+
+test14.tig
+/* error : compare rec with array */
+
+let
+
+	type arrtype = array of int
+	type rectype = {name:string, id: int}
+
+	var rec := rectype {name="aname", id=0}
+	var arr := arrtype [3] of 0
+
+in
+	if rec <> arr then 3 else 4
+end
+
+test15.tig
+/* error : if-then returns non unit */
+
+if 20 then 3
+
+test16.tig
+/* error: mutually recursive types thet do not pass through record or array */
+let 
+
+type a=c
+type b=a
+type c=d
+type d=a
+
+in
+ ""
+end
+
+test17.tig
+/* error: definition of recursive types is interrupted */
+let
+/* define a tree */
+type tree ={key: int, children: treelist}
+var d:int :=0
+type treelist = {hd: tree, tl: treelist}
+
+in
+	d
+end
+
+test18.tig
+/* error : definition of recursive functions is interrupted */
+let
+
+function do_nothing1(a: int, b: string):int=
+		(do_nothing2(a+1);0)
+
+var d:=0
+
+function do_nothing2(d: int):string =
+		(do_nothing1(d, "str");" ")
+
+in
+	do_nothing1(0, "str2")
+end
+
+test19.tig
+/* error : second function uses variables local to the first one, undeclared variable */
+let
+
+function do_nothing1(a: int, b: string):int=
+		(do_nothing2(a+1);0)
+
+function do_nothing2(d: int):string =
+		(do_nothing1(a, "str");" ")
+
+in
+	do_nothing1(0, "str2")
+end
+
+test20.tig
+/* error: undeclared variable i */
+
+while 10 > 5 do (i+1;())
+
+test21.tig
+/* error : procedure returns value  and procedure is used in arexpr */
+let
+
+/* calculate n! */
+function nfactor(n: int) =
+		if  n = 0 
+			then 1
+			else n * nfactor(n-1)
+
+in
+	nfactor(10)
+end
+
+test22.tig
+/* error : field not in record type */
+
+let 
+	type rectype = {name:string , id:int}
+	var rec1 := rectype {name="Name", id=0}
+in
+	rec1.nam := "asd"
+end
+
+test23.tig
+/* error : type mismatch */
+
+let 
+	type rectype = {name:string , id:int}
+	var rec1 := rectype {name="aname", id=0}
+in
+	rec1.name := 3;
+	rec1.id := "" 
+end
+
+test24.tig
+/* error : variable not array */
+let 
+	var d:=0
+in
+	d[3]
+end
+
+test25.tig
+/* error : variable not record */
+let 
+	var d:=0
+in
+	d.f 
+end
+
+test26.tig
+/* error : integer required */
+
+3 + "var"
+
+test28.tig
+/* error : different record types */
+
+let
+	type rectype1 = {name:string , id:int}
+	type rectype2 = {name:string , id:int}
+
+	var rec1: rectype1 := rectype2 {name="Name", id=0}
+in
+	rec1
+end
+
+test29.tig
+/* error : different array types */
+
+let
+	type arrtype1 = array of int
+	type arrtype2 = array of int
+
+	var arr1: arrtype1 := arrtype2 [10] of 0
+in
+	arr1
+end
+
+test31.tig
+/* error : type constraint and init value differ */
+let 
+	var a:int := " "
+in
+	a
+end
+
+test32.tig
+/* error : initializing exp and array type differ */
+
+let
+	type arrayty = array of int
+
+	var a := arrayty [10] of " "
+in
+	0
+end
+
+test33.tig
+/* error : unknown type */
+let
+	var a:= rectype {}
+in
+	0
+end
+
+test34.tig
+/* error : formals and actuals have different types */
+let
+	function g (a:int , b:string):int = a
+in
+	g("one", "two")
+end
+
+test35.tig
+/* error : formals are more then actuals */
+let
+	function g (a:int , b:string):int = a
+in
+	g("one")
+end
+
+test36.tig
+/* error : formals are fewer then actuals */
+let
+	function g (a:int , b:string):int = a
+in
+	g(3,"one",5)
+end
+
+test40.tig
+/* error : procedure returns value */
+let
+	function g(a:int) = a
+in 
+	g(2)
+end
+
+test43.tig
+/* initialize with unit and causing type mismatch in addition */
+
+let 
+	var a := ()
+in
+	a + 3
+end
+
+test45.tig
+/* error: initializing nil expressions not constrained by record type */
+let 
+	type rectype = {name:string, id:int}
+
+	var a:= nil
+in
+	a
+end
+
+test49.tig
+/* error: syntax error, nil should not be preceded by type-id.  */
+let 
+	type rectype = {name:string, id:int}
+
+	var a:= rectype nil
+in
+	a
+end
