@@ -13,6 +13,7 @@ env.sml
 translate.sml
 semant.sml
 main.sml
+prabsyn.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/basis.cm

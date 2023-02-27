@@ -110,7 +110,7 @@ trvar: Absyn.var -> expty
             let val {exp=_, ty=test_ty} = trexp(test_exp)
                 val () = if isSubTy(actual_ty test_ty, T.INT) then ()
                          else error pos' ("If condition: type " ^ (T.name test_ty) ^ " is not a subtype of INT")
-                val {exp=_, ty=then_ty} = trexp(test_exp)
+                val {exp=_, ty=then_ty} = trexp(then_exp)
                 (* then_exp must evaluate to no value *)
                 val () = if isSubTy(actual_ty then_ty, T.UNIT) andalso isSubTy(T.UNIT, actual_ty then_ty) then ()
                          else error pos' ("Then expression should be UNIT type rather than " ^ T.name(actual_ty then_ty))
@@ -175,7 +175,7 @@ trvar: Absyn.var -> expty
           (*Assign*)
           | trexp (A.AssignExp{var, exp, pos}) =
             let val vartype = trvar var
-              val exptype = trexp exp
+                val exptype = trexp exp
             in
               (*check if the type of exp is a subtype of var*)
               if (isSubTy(actual_ty(#ty(exptype)) , actual_ty(#ty(vartype)))) then ({exp=(), ty=T.UNIT})
@@ -268,8 +268,9 @@ trvar: Absyn.var -> expty
           | trvar (A.SubscriptVar(v,exp,pos)) = (* check v[exp] type *)
             let
               val v_ty = actual_ty(#ty (trvar v))
+              val () = checkInt(trexp exp, pos)
             in
-              case v_ty of T.ARRAY(array_ty, _) => (checkInt(trexp exp,pos); {exp=(), ty=actual_ty array_ty})
+              case v_ty of T.ARRAY(array_ty, _) => {exp=(), ty=actual_ty array_ty}
               |  _ => (error pos ("None array type cannot be subscripted"); {exp=(), ty=T.IMPOSSIBILITY})
             end
       in

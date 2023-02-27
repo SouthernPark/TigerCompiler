@@ -24,6 +24,35 @@ Error will not be reported on /var a := if (5>4) then 13 else  " "/ but on /var 
 
 This allows if then else expression to have some side effects, but not affect the whole program until they are used as value.
 
+
+** function procedure return value
+Procedure return value is T.UNIT, however, we think all type is a subtype of UNIT, should a procedure can return int, string.
+
+Error will not be reported until the UNIT value is used.
+
+Ex:
+#+BEGIN_SRC
+let
+        function g(a:int) = a
+in
+        g(2)
+end
+#+END_SRC
+
+The above code will not report error, cause the value of g(2) is not used.
+
+But below code will report error:
+#+BEGIN_SRC
+let
+        function g(a:int) = a
+in
+        1+g(2)
+end
+#+END_SRC
+
+cause g(2)'s value is used in /1+g(2)/
+
+
 * check_list
 | name                    | finished | tested |
 | check actual_ty is used | yes      |        |
