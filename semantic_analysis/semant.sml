@@ -109,7 +109,11 @@ trvar: Absyn.var -> expty
           | trexp (A.IfExp({test=test_exp, then'=then_exp, else'=NONE, pos=pos'})) =
             let val {exp=_, ty=test_ty} = trexp(test_exp)
                 val () = if isSubTy(actual_ty test_ty, T.INT) then ()
-                         else error pos' ("If condition: yype " ^ (T.name test_ty) ^ " is not a subtype of INT")
+                         else error pos' ("If condition: type " ^ (T.name test_ty) ^ " is not a subtype of INT")
+                val {exp=_, ty=then_ty} = trexp(test_exp)
+                (* then_exp must evaluate to no value *)
+                val () = if isSubTy(actual_ty then_ty, T.UNIT) andalso isSubTy(T.UNIT, actual_ty then_ty) then ()
+                         else error pos' ("Then expression should be UNIT type rather than " ^ T.name(actual_ty then_ty))
             in
               {exp=(), ty=T.UNIT} (* if expression with no else, returns no value *)
             end
@@ -240,6 +244,7 @@ trvar: Absyn.var -> expty
             let val () = case in_loop of NONE => error pos "not in a loop!"
                                        | SOME(_) => ()
             in {exp=(), ty=T.UNIT} end
+
         and trvar (A.SimpleVar(id,pos)) = (* check var binding exist : id *)
             (case S.look(venv,id) of
                 SOME(E.VarEntry{ty}) => {exp=(), ty=actual_ty ty}
@@ -272,7 +277,7 @@ trvar: Absyn.var -> expty
       end
   and transDec (venv, tenv, []) = {venv = venv, tenv = tenv}
     | transDec (venv, tenv, decs) =
-      (* var dec with type not specified *)
+          (* var dec with type not specified *)
       let fun trdec(A.VarDec{name, escape, typ=NONE, init, pos}, {venv, tenv}) = (* var x := exp *)
               let val {exp, ty} = transExp(venv, tenv, NONE) init (* NONE -> new dec does not in loop *)
               in
