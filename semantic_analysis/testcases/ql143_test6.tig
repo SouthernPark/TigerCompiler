@@ -1,0 +1,21 @@
+let
+
+/* test: error: mutual recursive funcs that are not consecutive */
+function foo(n: int): int =
+    if n = 0 then 1
+    else bar(n - 1)
+
+function bar(n: int): int =
+    if n = 0 then 1
+    else foo(n - 1) + baz(n - 1)
+
+var a:=3
+
+function baz(n: int): int =
+    if n = 0 then 1
+    else bar(n - 1)
+
+
+in
+
+end
