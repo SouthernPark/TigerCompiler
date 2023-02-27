@@ -4,6 +4,26 @@
 
 Semantic Analysis includes maintaince of symbol table and type checking.
 
+* special case
+
+** if test_exp then exp1 else exp2
+In this compiler we allow exp1 and exp2 to have different type. Specially, this if expression will return leastUpperBound(type of exp1, type of exp2).
+
+Below is an example:
+#+BEGIN_SRC
+let
+var a := if (5>4) then 13 else  " "
+var b := 1+a
+in
+end
+#+END_SRC
+
+var a is evaluted to be type UNIT which is supper type of INT and STRING.
+
+Error will not be reported on /var a := if (5>4) then 13 else  " "/ but on /var b := 1+a/.
+
+This allows if then else expression to have some side effects, but not affect the whole program until they are used as value.
+
 * check_list
 | name                    | finished | tested |
 | check actual_ty is used | yes      |        |
