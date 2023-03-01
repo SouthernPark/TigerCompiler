@@ -210,7 +210,8 @@ trvar: Absyn.var -> expty
           | trexp (A.LetExp{decs,body,pos}) =
             let
               val {venv=venv', tenv=tenv'} = transDec(venv, tenv, decs)
-            in transExp(venv', tenv', NONE) body (* NONE -> break will not work in let exp inside loop *)
+            in
+              transExp(venv', tenv', in_loop) body (* break may occur in let body *)
             end
           | trexp (A.SeqExp(explst)) =
             let fun checkExprLst [] = {exp=(), ty= T.UNIT}
