@@ -1,0 +1,305 @@
+#+TITLE Semantic Analysis
+#+DATE <2023-02-13 Mon 15:21>
+#+TODO: TODO INPROCESS UNSURE DONE
+
+Semantic Analysis includes maintaince of symbol table and type checking.
+
+* special case
+
+** if test_exp then exp1 else exp2
+In this compiler we allow exp1 and exp2 to have different type. Specially, this if expression will return leastUpperBound(type of exp1, type of exp2).
+
+Below is an example:
+#+BEGIN_SRC
+let
+var a := if (5>4) then 13 else  " "
+var b := 1+a
+in
+end
+#+END_SRC
+
+var a is evaluted to be type UNIT which is supper type of INT and STRING.
+
+Error will not be reported on /var a := if (5>4) then 13 else  " "/ but on /var b := 1+a/.
+
+This allows if then else expression to have some side effects, but not affect the whole program until they are used as value.
+
+
+** function procedure return value
+Procedure return value is T.UNIT, however, we think all type is a subtype of UNIT, should a procedure can return int, string.
+
+Error will not be reported until the UNIT value is used.
+
+Ex:
+#+BEGIN_SRC
+let
+        function g(a:int) = a
+in
+        g(2)
+end
+#+END_SRC
+
+The above code will not report error, cause the value of g(2) is not used.
+
+But below code will report error:
+#+BEGIN_SRC
+let
+        function g(a:int) = a
+in
+        1+g(2)
+end
+#+END_SRC
+
+cause g(2)'s value is used in /1+g(2)/
+
+
+* check_list
+| name                    | finished | tested |
+| check actual_ty is used | yes      |        |
+| base type               | yes      |        |
+| base func               | yes      |        |
+| RecordExp               | yes      |        |
+| WhileExp                | yes      |        |
+| ForExp                  | yes      |        |
+| BreakExp                | yes      |        |
+| ArrayExp                | yes      |        |
+| SimpleVar               | yes      |        |
+| FieldVar                | yes      |        |
+| SubscriptVar            | yes      |        |
+| VarExp                  | yes      |        |
+| NilExp                  | yes      |        |
+| IntExp                  | yes      |        |
+| StringExp               | yes      |        |
+| CallExp                 | yes      |        |
+| PlusOp                  | yes      |        |
+| MinusOp                 | yes      |        |
+| TimesOp                 | yes      |        |
+| DivideOp                | yes      |        |
+| EqOp                    | yes      |        |
+| NeqOp                   | yes      |        |
+| LtOp                    | yes      |        |
+| LeOp                    | yes      |        |
+| GtOp                    | yes      |        |
+| GeOp                    | yes      |        |
+| SeqExp                  | yes      |        |
+| AssignExp               | yes      |        |
+| IfExp                   | yes      |        |
+| TypeDec                 | yes      |        |
+| NameTy                  | yes      |        |
+| RecordTy                | yes      |        |
+| ArrayTy                 | yes      |        |
+
+
+
+* Requirements
+Write a type-checking phase for your compiler, a module /Semant/ containing a function
+#+BEGIN_SRC
+transProg : Absyn.exp -> unit
+#+END_SRC
+that type-checks an abstract syntax tree and produces any appropriate error messages about mismatching types or undeclared identifiers.
+
+Also provide the implementation of the /Env/ module described in this chapter.
+
+Make a module./Main/ that calls the parser, yielding an Absyn.exp, and then calls transProg on this expression.
+
+Part a. Implement a simple type-checker and declaration processor that does not handle recursive functions or recursive data types (forward references to functions or types need not be handled). Also don't bother to check that each break statement is within a for or while statement.
+
+Part b. Augment your simple type-checker to handle recursive (and mutually recursive) functions; (mutually) recursive type declarations; and correct nesting of break statements.
+
+
+
+* File description
+
+| file name     | description                               |
+| env.sml       | contains base symbol table                |
+| semant.sml    | contains code for type checking           |
+| main.sml      | Call the parser and do type checking      |
+| types.sml     | Actual type for Tiger                     |
+| translate.sml | Dummy module, will flesh out in chapter 7 |
+
+All the other files are from previous parser.
+
+
+
+
+
+
+* Tiger sub-typing
+
+Below is the lattice sub-typing we are gonna to use in our type checking.
+
+#+BEGIN_SRC
+                         +------------+
+                         |    unit    |
+                         +------------+
+                                |
+     +-----------------------------------------------------+
+     |                |                 |                  |
++----+--+         +---+----+        +---+----+         +---+---+
+|  int  |         | string |        | record |         | array |
++-------+         +--------+        +--------+         +-----/-+
+        \                \              |                 /
+         \                \         +---+-----+          /
+          \                \        |   nil   |         /
+           \                \       +---------+        /
+             \                \       /              /
+        +--------------------------------------------+
+        |               impossibility                |
+        +--------------------------------------------+
+#+END_SRC
+
+/break/ exp, /exit/ exp,and exp that will cause error will be given type /impossibility/. The reason we do this is:
++ allow exp like: if x=0 then exit() else 1 (exit() return type impossibility which is a subtype of int. Fine)
+  - exit()'s type will not be used cause the program will exit immediately
++ clean code for type checking. described in second issue
+
+unit type is used for type promoting. When type does match in the /if then else/ statement, for example if x == 0 return string else return int, we could promote them to unit. This is ok if we are not trying to use the result in any context. It's good to use them in statement that will produce side effect. If they are used in context, for example int + unit, the type checking will handle it.
+
+
+How do we achieve this in code ?
+
+(1) check if a type T1 is a sub-type of T2
+
+This is useful when we want to check type assignment
+
+Another example is, var x:some_record = nil. Cause nil is a subtype of all record type, so we could regard nil as a record. So this expression is correct.
+
+(2) find the least upper bound of two types
+
+This is useful when we deal with if ... then type1 else type2.
+
+We return the least upper bound of type1 and type2.
+
+
+
+* issue
+
+** TODO access field defiend in env.sig
+
+we have /type access/ in the ENV signature, what's its use?
+
+I currently defiend it as /ref unit/.
+
+
+
+** UNSURE actual_ty in semant.sml
+The type in the VarEntry will sometimes be a "NAME type" (Program 5.7), and all the types returned from transExp should be "actual" types (with the names traced through to their underlying definitions). It is therefore useful to have a function, perhaps called actual_ty, to skip past all the NAMES
+
+The result will be a Types.ty that is not a NAME, though if it is a record or array type it might contain NAME types to describe its components.
+
+
+When we want to reture a Tiger type in transExp and transVar, we may get a NAME type which is initially used as a type place holder. What we really want is a real Tiger type, thus we may need to remove NAME type by extracting the real type pointed by it.
+
+Also note that RECORD or ARRAY type may also have NAME type in it. We may need to remove NAME type inside them.
+
+Another thing to consider is, NAME type is defined as below:
+#+BEGIN_SRC
+datatype ty = NAME of Symbol.symbol * ty option ref
+#+END_SRC
+
+The type in NAME may be a reference to SOME(ty) or NONE. NONE will only occur in type declaration, when handle consecutive type decs. But after we go through all the type bodies, all these NONEs will all be filled with a SOME. In otherwords, it's impossible for us to see a NONE in NAME when we are doing transExp and transVar. So we do not need to worry actual_ty will handle the NONE case.
+
+
+
+
+** TODO what type to return when we have a error case
+
+For example, we have the following code where x is int type and y is string type
+#+BEGIN_SRC
+var s:string := x + y
+#+END_SRC
+
+The traditional way to do this that, we check y is not a int and report an error. To make process continue, we just regard x + y as int type. And another error will happen we try to assign int to string. Cascaded errors will report for just single error. Also the type int we return when error happens is not reasonable.
+
+A better way to handle this is introducing another type IMPOSSIBILITY. This type is regarded as subtype of all types. Regard error type as IMPOSSIBILITY does not break the compiling process because the compiling process has already broke if they have unmatched type.
+
+With this introduced types, we can do the following without corrupt our compiling process.
+
++ Regard exit() func return type as IMPOSSIBILITY
+  - This can handle the following code: /if x == 0 then exit() else 0/. For type checking, we need to guarantee exit() and 0 has the same type. IMPOSSIBILITY is a subtype of INT, so this program will pass type checking
++ Similarly, we can regard break return type as IMPOSSIBILITY
++ Regard error type as IMPOSSIBILITY.
+
+
+
+** DONE The line number in the error message is always 1
+
+The reason why this happens is we reset all the line number info after lexing in tiger.lex as below:
+#+BEGIN_SRC
+fun eof() = let
+                val pos = hd(!linePos)
+                val () = checkComment(!commentStartPos)
+                val () = checkString(!strStartPos)
+            in
+                reset();
+                ErrorMsg.reset();
+                Tokens.EOF(pos, pos)
+            end;
+#+END_SRC
+
+The reason why we need reset here is for lexing consecutively.
+One way to handle this is we put all thus reset in the main function before lexing.
+
+so we add /val _ = ErrorMsg.reset();/ in Parse.parse function in parse.sml.
+
+Now we can do consecutive parsing without affecting the line number in the type checking process.
+
+
+** TODO recursive type dec cycle should have at least one array or record in it
+The following
+#+BEGIN_SRC
+type d = e
+type e = d
+#+END_SRC
+should be rejected, but not
+
+
+** DONE what should the return type be set if the function is mutual recursive and does not give return type in its signature
+
+#+BEGIN_SRC
+fun a () = base case; 1 + b();
+fun b () =  base case; ...; a(); return int;
+#+END_SRC
+
+when put the headers into venv how should we know its return type is int ?
+
+if we do not know its return type is int, then how should we evaluate "1+b()" as correct ?
+
+In Tiger, if a function does not specify its return type explicitly in function signature, we regard it as unit type.
+
+Unit type is the super type of all other types, so what ever returns by the function is acceptable.
+
+As long as the return value is not used: for example: 1 + unit will report error.
+
+
+
+
+* TODOS
+
+** TODO finsih getBaseFuncEnv() in env.sml
+Tiger has some predefined functions listed in Appendix A like: flush, ord, chr, size and so on.
+
+We need to add them into the base symbol table.
+
+
+
+** TODO finish transProg: Absyn.exp -> unit in semant.sml
+call transExp to recursively type-checking the abstract syntax tree
+
+** TODO finish trexp, transExp, transDec and trvar
+transExp:
+	[x] NILExp, IntExp, StringExp,
+	[] CallExp
+	[x] OpExp
+	[] RecordExp, ArrayExp
+	[x] SeqExp
+	[x] AssignExp
+	[] ForExp, WhileExp, BreakExp
+	[x] LetExp
+
+
+
+
+
+
+
