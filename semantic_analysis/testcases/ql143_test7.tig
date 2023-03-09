@@ -1,0 +1,11 @@
+let
+	var a := 0
+	var b := 0
+
+in
+	while 1 do
+	      a + b
+
+end
+
+
