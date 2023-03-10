@@ -1,0 +1,19 @@
+let
+	/* test mutual recursive functions */
+	type bool = int
+	var true := 1
+	var false := 0
+	function is_even(n: int): bool =
+    		 if n = 0 then true
+    		 else is_odd(n - 1)
+
+	function is_odd(n: int): bool =
+    		 if n = 0 then false
+    		 else is_even(n - 1)
+
+    function is_even(n: int): bool =
+    		 if n = 0 then true
+    		 else is_odd(n - 1)
+in
+
+end

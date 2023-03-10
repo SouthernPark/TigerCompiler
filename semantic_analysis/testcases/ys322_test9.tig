@@ -1,0 +1,8 @@
+let
+	type a = int
+    type b = string
+    type a = string
+    var x:int := 0
+    type b = int
+in
+end
