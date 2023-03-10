@@ -10,6 +10,7 @@ struct
   structure E = Env
   structure S = Symbol
   structure T = Types
+  structure Tr = Translate		     
   type venv = Env.enventry S.table
   type tenv = T.ty S.table
   type expty = {exp: Translate.exp, ty: T.ty}
@@ -77,7 +78,7 @@ transExp (venv * tenv) -> Absyn.exp -> expty
 trexp: Absyn.exp -> expty
 trvar: Absyn.var -> expty
  *)
-  fun transExp(venv, tenv, in_loop:(unit option)) =
+  fun transExp(venv, tenv, in_loop:(unit option), level) =
       let fun trexp (A.NilExp) = {exp=(), ty=T.NIL}
           | trexp (A.IntExp(int)) = {exp=(), ty=T.INT}
           | trexp (A.StringExp(string)) = {exp=(), ty=T.STRING}
@@ -200,7 +201,7 @@ trvar: Absyn.var -> expty
                   end
 
             in
-              case S.look(venv, name) of SOME(E.FunEntry{formals=typ_lst, result=rt}) => checkParams(typ_lst, rt)
+              case S.look(venv, name) of SOME(E.FunEntry{level=funLevel, label=funLabel,formals=typ_lst, result=rt}) => checkParams(typ_lst, rt)
                                        | _ => ((error pos' ("Function " ^ (S.name name) ^ " is not defined")); {exp=(), ty=T.IMPOSSIBILITY})
 
 
@@ -209,9 +210,9 @@ trvar: Absyn.var -> expty
           (* let expression *)
           | trexp (A.LetExp{decs,body,pos}) =
             let
-              val {venv=venv', tenv=tenv'} = transDec(venv, tenv, decs)
+              val {venv=venv', tenv=tenv'} = transDec(venv, tenv, decs, level)
             in
-              transExp(venv', tenv', in_loop) body (* break may occur in let body *)
+              transExp(venv', tenv', in_loop, level) body (* break may occur in let body *)
             end
           | trexp (A.SeqExp(explst)) =
             let fun checkExprLst [] = {exp=(), ty= T.UNIT}
@@ -225,7 +226,7 @@ trvar: Absyn.var -> expty
               val () = checkInt(trexp lo, pos)
               val () = checkInt(trexp hi, pos)
               val venv' = S.enter(venv, var, E.VarEntry{ty=T.INT})
-              val {exp=body_exp, ty=body_ty} = transExp(venv', tenv, SOME ()) body (* body is inside loop *)
+              val {exp=body_exp, ty=body_ty} = transExp(venv', tenv, SOME (), level) body (* body is inside loop *)
               val () = if isSubTy(actual_ty(body_ty), T.UNIT) andalso isSubTy(T.UNIT,actual_ty(body_ty))
                        then () else (error pos "body of for loop should have UNIT as return value")
 	    in
@@ -234,7 +235,7 @@ trvar: Absyn.var -> expty
 	  | trexp (A.WhileExp{test, body, pos}) =
             let
               val () = checkInt(trexp test, pos)
-              val {exp=body_exp, ty=body_ty} = transExp(venv, tenv, SOME ()) body (* body is inside loop *)
+              val {exp=body_exp, ty=body_ty} = transExp(venv, tenv, SOME (), level) body (* body is inside loop *)
               val () = if isSubTy(actual_ty body_ty, T.UNIT) andalso isSubTy(T.UNIT, actual_ty body_ty)
                        then ()
                        else (error pos ("body of while loop should have UNIT as return value, actual return " ^ T.name(actual_ty body_ty)))
@@ -249,7 +250,7 @@ trvar: Absyn.var -> expty
         and trvar (A.SimpleVar(id,pos)) = (* check var binding exist : id *)
             (case S.look(venv,id) of
                 SOME(E.VarEntry{ty}) => {exp=(), ty=actual_ty ty}
-              | SOME(E.FunEntry{formals, result}) =>
+              | SOME(E.FunEntry{level=funLevel, label=funLabel, formals, result}) =>
                 (error pos ("var " ^ (S.name id) ^ " should be a variable rather than a func");
                   {exp=(), ty=T.IMPOSSIBILITY})
               | NONE =>
@@ -277,11 +278,11 @@ trvar: Absyn.var -> expty
       in
         trexp
       end
-  and transDec (venv, tenv, []) = {venv = venv, tenv = tenv}
-    | transDec (venv, tenv, decs) =
+  and transDec (venv, tenv, [], level) = {venv = venv, tenv = tenv}
+    | transDec (venv, tenv, decs, level) =
           (* var dec with type not specified *)
       let fun trdec(A.VarDec{name, escape, typ=NONE, init, pos}, {venv, tenv}) = (* var x := exp *)
-              let val {exp, ty} = transExp(venv, tenv, NONE) init (* NONE -> new dec does not in loop *)
+              let val {exp, ty} = transExp(venv, tenv, NONE, level) init (* NONE -> new dec does not in loop *)
               in
                 (* var x := nil is not allowed *)
                 case ty of T.NIL => (error pos "NIL can not assign to var whose type is not determined";
@@ -291,7 +292,7 @@ trvar: Absyn.var -> expty
             (* var dec with type specified *)
             | trdec(A.VarDec{name, escape, typ=SOME(symbol, pos1), init, pos=pos2}, {venv, tenv})  =
               let
-                val {exp, ty} = transExp(venv, tenv, NONE) init (* NONE -> new dec does not in loop *)
+                val {exp, ty} = transExp(venv, tenv, NONE, level) init (* NONE -> new dec does not in loop *)
                 val var_ty = actual_ty(transTy(tenv, A.NameTy(symbol, pos1)))
                 val ty = actual_ty(ty)
               in
@@ -340,7 +341,7 @@ trvar: Absyn.var -> expty
                         val formals' = foldr (fn (field, ans) => (actual_ty (getTyFromSym(tenv, (#typ field))))::ans) [] fields
                         val result_type = case result' of SOME(sym, pos1) => actual_ty(getTyFromSym(tenv, sym))
                                                          | NONE => T.UNIT (*func does not specify return type is a procedure*)
-                        val entry = E.FunEntry{formals=formals', result=result_type}
+                        val entry = E.FunEntry{level=funLebel, label=funLabel, formals=formals', result=result_type}
                     in
                       S.enter(venv, name', entry)
                     end
@@ -359,7 +360,7 @@ trvar: Absyn.var -> expty
 
                       (* put all the params in this func into venv *)
                       val func_venv = foldr putParamInVenv venv' params'
-                      val {exp=body_exp, ty=body_rt} = transExp(func_venv, tenv, NONE) body' (* NONE -> new fundec, not in loop *)
+                      val {exp=body_exp, ty=body_rt} = transExp(func_venv, tenv, NONE, level) body' (* NONE -> new fundec, not in loop *)
                       val rt = case result' of SOME(sym, pos1) => actual_ty(getTyFromSym(tenv, sym))
                                              | NONE => T.UNIT (* func does not specify return type is a procedure *)
                     in
@@ -399,7 +400,12 @@ trvar: Absyn.var -> expty
                )
 
 
-  fun transProg(exp:A.exp):unit = (transExp (E.base_venv, E.base_tenv, NONE) (exp);())
+  fun transProg(exp:A.exp):unit =
+      let val level = Tr.newLevel({parent=Tr.outermost, name=Temp.newlabel(),formals=[]})
+      in	 
+	  transExp (E.base_venv, E.base_tenv, NONE, level) (exp);()
+      end
+	  
   (* NONE -> initially no loop *)
 
 end
