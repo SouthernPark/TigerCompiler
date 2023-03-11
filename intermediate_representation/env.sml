@@ -2,8 +2,8 @@ signature ENV =
 sig
   type access (* don't quite understand its use *)
   type ty
-  
-		     
+
+
   datatype enventry = VarEntry of {ty: ty}
                     | FunEntry of {level:Translate.level, label:Temp.label, formals: ty list, result: ty}
 
@@ -18,7 +18,7 @@ type access = unit ref
 type ty = Types.ty
 
 structure Tr = Translate
-		   
+
 datatype enventry = VarEntry of {ty: ty}
                   | FunEntry of {level:Tr.level,
 				 label:Temp.label,
@@ -43,7 +43,7 @@ fun getBaseFuncEnv() =
 		       (Symbol.symbol("concat"), FunEntry{level = Tr.outermost, label = Temp.newlabel(),formals=[Types.STRING, Types.STRING], result=Types.STRING}),
 		       (Symbol.symbol("not"), FunEntry{level = Tr.outermost, label = Temp.newlabel(),formals=[Types.INT], result=Types.INT}),
 		      (Symbol.symbol("exit"), FunEntry{level = Tr.outermost, label = Temp.newlabel(),formals=[Types.INT], result=Types.UNIT})]
-	fun loadPredFunc ((symbol, func), funcEnv) = Symbol.enter(funcEnv,symbol, func)								 
+	fun loadPredFunc ((symbol, func), funcEnv) = Symbol.enter(funcEnv,symbol, func)
     in
       foldl loadPredFunc Symbol.empty funlist
     end
