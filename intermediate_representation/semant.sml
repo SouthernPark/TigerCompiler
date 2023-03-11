@@ -10,7 +10,7 @@ struct
   structure E = Env
   structure S = Symbol
   structure T = Types
-  structure Tr = Translate		     
+  structure Tr = Translate
   type venv = Env.enventry S.table
   type tenv = T.ty S.table
   type expty = {exp: Translate.exp, ty: T.ty}
@@ -341,7 +341,10 @@ trvar: Absyn.var -> expty
                         val formals' = foldr (fn (field, ans) => (actual_ty (getTyFromSym(tenv, (#typ field))))::ans) [] fields
                         val result_type = case result' of SOME(sym, pos1) => actual_ty(getTyFromSym(tenv, sym))
                                                          | NONE => T.UNIT (*func does not specify return type is a procedure*)
-                        val entry = E.FunEntry{level=funLebel, label=funLabel, formals=formals', result=result_type}
+                        val funLabel = Temp.newlabel()
+                        val formals_escape = foldr (fn (field, ans) => (!(#escape field)::ans)) [] fields
+                        val funLevel = Tr.newLevel({parent=level, name=funLabel, formals=formals_escape})
+                        val entry = E.FunEntry{level=funLevel, label=funLabel, formals=formals', result=result_type}
                     in
                       S.enter(venv, name', entry)
                     end
@@ -402,10 +405,10 @@ trvar: Absyn.var -> expty
 
   fun transProg(exp:A.exp):unit =
       let val level = Tr.newLevel({parent=Tr.outermost, name=Temp.newlabel(),formals=[]})
-      in	 
+      in
 	  transExp (E.base_venv, E.base_tenv, NONE, level) (exp);()
       end
-	  
+
   (* NONE -> initially no loop *)
 
 end
