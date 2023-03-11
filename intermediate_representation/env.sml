@@ -2,8 +2,10 @@ signature ENV =
 sig
   type access (* don't quite understand its use *)
   type ty
+  
+		     
   datatype enventry = VarEntry of {ty: ty}
-                    | FunEntry of {formals: ty list, result: ty}
+                    | FunEntry of {level:Translate.level, label:Temp.label, formals: ty list, result: ty}
 
   val base_tenv : ty Symbol.table (* predefined types *)
   val base_venv : enventry Symbol.table (* predefined functions *)
@@ -14,8 +16,13 @@ where type ty = Types.ty=
 struct
 type access = unit ref
 type ty = Types.ty
+
+structure Tr = Translate
+		   
 datatype enventry = VarEntry of {ty: ty}
-                  | FunEntry of {formals: ty list, result: ty}
+                  | FunEntry of {level:Tr.level,
+				 label:Temp.label,
+		      formals: ty list, result: ty}
 fun getBaseTypeEnv() =
     let val tenv = Symbol.empty
         val tenv = Symbol.enter(tenv, Symbol.symbol("int"), Types.INT)
@@ -26,16 +33,16 @@ fun getBaseTypeEnv() =
 
 fun getBaseFuncEnv() =
     (* predefined functions are in appendix A like: flush, ord, chr, size *)
-    let val funlist = [(Symbol.symbol("print"), FunEntry{formals=[Types.STRING], result=Types.UNIT}),
-		       (Symbol.symbol("flush"), FunEntry{formals=[], result=Types.UNIT}),
-		       (Symbol.symbol("getchar"),FunEntry{formals=[], result=Types.STRING}),
-		       (Symbol.symbol("ord"), FunEntry{formals=[Types.STRING], result=Types.INT}),
-		       (Symbol.symbol("chr"), FunEntry{formals=[Types.INT], result=Types.STRING}),
-		       (Symbol.symbol("size"), FunEntry{formals=[Types.STRING], result=Types.INT}),
-		       (Symbol.symbol("substring"), FunEntry{formals=[Types.STRING, Types.INT, Types.INT], result=Types.STRING}),
-		       (Symbol.symbol("concat"), FunEntry{formals=[Types.STRING, Types.STRING], result=Types.STRING}),
-		       (Symbol.symbol("not"), FunEntry{formals=[Types.INT], result=Types.INT}),
-		      (Symbol.symbol("exit"), FunEntry{formals=[Types.INT], result=Types.UNIT})]
+    let val funlist = [(Symbol.symbol("print"), FunEntry{level = Tr.outermost, label = Temp.newlabel(),formals=[Types.STRING], result=Types.UNIT}),
+		       (Symbol.symbol("flush"), FunEntry{level = Tr.outermost, label = Temp.newlabel(),formals=[], result=Types.UNIT}),
+		       (Symbol.symbol("getchar"),FunEntry{level = Tr.outermost, label = Temp.newlabel(),formals=[], result=Types.STRING}),
+		       (Symbol.symbol("ord"), FunEntry{level = Tr.outermost, label = Temp.newlabel(),formals=[Types.STRING], result=Types.INT}),
+		       (Symbol.symbol("chr"), FunEntry{level = Tr.outermost, label = Temp.newlabel(),formals=[Types.INT], result=Types.STRING}),
+		       (Symbol.symbol("size"), FunEntry{level = Tr.outermost, label = Temp.newlabel(),formals=[Types.STRING], result=Types.INT}),
+		       (Symbol.symbol("substring"), FunEntry{level = Tr.outermost, label = Temp.newlabel(),formals=[Types.STRING, Types.INT, Types.INT], result=Types.STRING}),
+		       (Symbol.symbol("concat"), FunEntry{level = Tr.outermost, label = Temp.newlabel(),formals=[Types.STRING, Types.STRING], result=Types.STRING}),
+		       (Symbol.symbol("not"), FunEntry{level = Tr.outermost, label = Temp.newlabel(),formals=[Types.INT], result=Types.INT}),
+		      (Symbol.symbol("exit"), FunEntry{level = Tr.outermost, label = Temp.newlabel(),formals=[Types.INT], result=Types.UNIT})]
 	fun loadPredFunc ((symbol, func), funcEnv) = Symbol.enter(funcEnv,symbol, func)								 
     in
       foldl loadPredFunc Symbol.empty funlist
