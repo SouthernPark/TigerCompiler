@@ -41,5 +41,65 @@ fun allocLocal TOP isEscape = ((ErrorMsg.error 0 "cannot allocate variables in o
   | allocLocal curLevel isEscape =
     let val Level({parent=_, frame=frame'}, _) = curLevel in (curLevel, F.allocLocal(frame') isEscape) end
 
+fun seq [x] = x
+  | seq (a::l) = T.SEQ(a, seq l)
+  | seq [] = T.EXP(T.CONST 0)
+
+(* unNx function *)
+fun unNx (Ex e) = T.EXP e
+  | unNx (Nx s) = s
+  | unNx (Cx c) = let
+                    val l = Temp.newlabel()
+                  in
+                    seq [c(l, l), T.LABEL l]
+                  end
+
+(* unEx function *)
+fun unEx (Ex e) = e
+  | unEx (Nx s) = T.ESEQ(s, T.CONST 0)
+  | unEx (Cx c) = let
+                    val r = Temp.newtemp()
+                    val t = Temp.newlabel()
+                    val f = Temp.newlabel()
+                  in
+                    T.ESEQ(seq [T.MOVE(T.TEMP r, T.CONST 1),
+                                c(t, f),
+                                T.LABEL f,
+                                T.MOVE(T.TEMP r, T.CONST 0),
+                                T.LABEL t],
+                            T.TEMP r)
+                  end
+
+(* unCx function : treat 0 and 1 specially to have simple and efficient translations *)
+fun unCx (Ex e) = (case e of T.CONST 0 => (fn (t, f) => T.JUMP(T.NAME f, [f]))
+                           | T.CONST 1 => (fn (t, f) => T.JUMP(T.NAME t, [t]))
+                           | e => (fn (t, f) => T.CJUMP (T.EQ, e, T.CONST 0, f, t)))
+  | unCx (Nx s) = raise ErrorMsg.Error
+  | unCx (Cx c) = c
+
+(* if expression *)
+fun transIF (testexp, thenexp, elseexp) =
+  let
+    val test' = unCx testexp
+    val then' = unEx thenexp
+    val else' = unEx elseexp
+    val label_t = Temp.newlabel()
+    val label_f = Temp.newlabel()
+    val cond = test'(label_t, label_f)
+    val ans = Temp.newtemp()
+    val label_end = Temp.newlabel()
+  in
+    Ex(T.ESEQ(seq [cond,
+                    T.LABEL label_t,
+                    T.MOVE(T.TEMP ans, then'),
+                    T.JUMP(T.NAME label_end, [label_end]),
+                    T.LABEL label_f,
+                    T.MOVE(T.TEMP ans, else'),
+                    T.LABEL label_end],
+                    T.TEMP ans))
+  end
+
+
+
 end
 
