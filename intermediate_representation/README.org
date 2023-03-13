@@ -2,18 +2,145 @@
 #+DATE <2023-02-13 Mon 15:21>
 #+TODO: TODO INPROCESS UNSURE DONE
 
-Semantic Analysis includes maintaince of symbol table and type checking.
-
 FRAME + Intermediate representation
 
-FRAME: put fucntion parameters/local_variable on regs or stack
+* Grader to read
+
++ we currently set all variables as escaping
++ we changed the breakexp type to BOTTOM/IMPOSSIBILITY (in semant.sml) to keep consistent with our type system
++ we change the exit type to BOTTOM/IMPOSSIBILITY (in env.sml) to keep consistent  with type system
+
+* Requirements
+
+** chapter 6 FRAME
+
++ implement the mips frame module (in mipsframe.sml) following the signature in frame.sig
+  - Frame can create new frame to hold function arguments
+  - Frame can create space for local variables
+  - Frame can give back function args
+
++ implement Translate module (in translate.sml) following the signature in translate.sml
+  - Translate module can create new frame by using functions in Frame
+  - Translate module can give back function args by using functins in Frame
+  - Translate module maintain nested funciton level
+
++ Augment semant module
+  - to allocate locations for local variables by using functions in Translate module (deal with fundec, vardec)
+  - to keep track of nesting levels (deal with function call)
+
+*** relations between frame, translate, and semant module
+
+#+BEGIN_SRC
+
+     +-------------------+
+     |   semant          |
+     +-------------------+
+        |
+        v
+     +-------------------+
+     |   translate       |
+     +--+----------------+
+        |
+        v
+ +----------+    +---------+
+ |  Frame   |--->|  Temp   |
+ +----------+    +---------+
+
+#+END_SRC
+
+Semant can not call Frame directly to alloc frame, it calls translate to do that.
+
+
+
+
+* update on var environment
+
+The current var entry in semantic analysis (previous chapter) is defined as:
+#+BEGIN_SRC
+datatype enventry = VarEntry of {ty: ty}
+                  | FunEntry of {formals: ty list, result: ty}
+#+END_SRC
+
+The above definition is enough for var type checking and function type checking. But not enough for later Intermediate Translation. The var environment need to tell semant how to find the variable in the funciton frame and where to find the function. Thus we get the following definition:
+
+#+BEGIN_SRC
+datatype enventry = VarEntry of {access: Translate.access, ty: ty}
+                  | FunEntry of {level:Translate.level, label:Temp.label, formals: ty list, result: ty}
+#+END_SRC
+
+access in VarEntry is used to find a variable in a function frame.
+
+level in FunEntry info about function nesting level (we use parent level, like linked list to handle that) and also function frame. Label is where we can access the function machine code in memory.
+
+
+* FRAME
+#+BEGIN_SRC
+
+	 +--------------+
+	 |              |
+	 |              |
+	 +--------------+
+	 | arg 2        |
+	 +--------------+
+	 | arg 1        |
+	 +--------------+
+FP --->	 | static link  |
+	 +--------------+
+	 |              |
+	 | local var    |
+	 |              |
+	 +--------------+
+#+END_SRC
+
+Incoming arguments is InFrame(x) where x > 0, while local var is InFrame(x) where x < 0
+
+All elements in the frame should be word size (4 bytes), which is required by Tiger.
+
+Record and array element is just passing by pointers (word size).
+
+The content of array and record is just in the heap.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 * TODO
 
-** view shift
+** TODO Later view shift
 
 See also pages 168 and 261 for more discussion of the view shift
 
 
+
+
+
+
+** TODO Later Caculating escapes
+
+Currently, we regarding every variables/arguments as escaping. Later on, we will implement what is described in page 138.
+
+
+
+** TODO fun name and var name have the same name (need to check)
 
 
