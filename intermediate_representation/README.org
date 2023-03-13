@@ -22,6 +22,7 @@ FRAME + Intermediate representation
   - For those having error type checking, we will return ERROREXP (like: CONST 0) for exp.
 + for the prologue and epilogue of fundec, we will implement it in later phase.
 
+
 * Requirements
 
 ** chapter 6 FRAME
@@ -322,6 +323,6 @@ See also pages 168 and 261 for more discussion of the view shift
 Currently, we regarding every variables/arguments as escaping. Later on, we will implement what is described in page 138.
 
 ** TODO fun name and var name have the same name (need to check)
-** TODO fun name and var name have the same name (need to check)
+
 
 
