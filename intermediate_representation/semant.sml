@@ -113,8 +113,8 @@ trvar: Absyn.var -> expty
                          else error pos' ("If condition: type " ^ (T.name test_ty) ^ " is not a subtype of INT")
                 val {exp=_, ty=then_ty} = trexp(then_exp)
                 (* then_exp must evaluate to no value *)
-                val () = if isSubTy(actual_ty then_ty, T.UNIT) andalso isSubTy(T.UNIT, actual_ty then_ty) then ()
-                         else error pos' ("Then expression should be UNIT type rather than " ^ T.name(actual_ty then_ty))
+                val () = if isSubTy(actual_ty then_ty, T.UNIT) then ()
+                         else error pos' (T.name(actual_ty then_ty) ^ " is not a subtype of UNIT.")
             in
               {exp=(), ty=T.UNIT} (* if expression with no else, returns no value *)
             end
@@ -227,8 +227,8 @@ trvar: Absyn.var -> expty
               val () = checkInt(trexp hi, pos)
               val venv' = S.enter(venv, var, E.VarEntry{ty=T.INT})
               val {exp=body_exp, ty=body_ty} = transExp(venv', tenv, SOME (), level) body (* body is inside loop *)
-              val () = if isSubTy(actual_ty(body_ty), T.UNIT) andalso isSubTy(T.UNIT,actual_ty(body_ty))
-                       then () else (error pos "body of for loop should have UNIT as return value")
+              val () = if isSubTy(actual_ty(body_ty), T.UNIT)
+                       then () else (error pos (T.name (actual_ty body_ty) ^ " is not a subtype of UNIT."))
 	    in
               {exp=(),ty=T.UNIT}
 	    end
@@ -236,9 +236,9 @@ trvar: Absyn.var -> expty
             let
               val () = checkInt(trexp test, pos)
               val {exp=body_exp, ty=body_ty} = transExp(venv, tenv, SOME (), level) body (* body is inside loop *)
-              val () = if isSubTy(actual_ty body_ty, T.UNIT) andalso isSubTy(T.UNIT, actual_ty body_ty)
+              val () = if isSubTy(actual_ty body_ty, T.UNIT)
                        then ()
-                       else (error pos ("body of while loop should have UNIT as return value, actual return " ^ T.name(actual_ty body_ty)))
+                       else (error pos (T.name(actual_ty body_ty) ^ " is not a subtype of UNIT"))
             in
               {exp=(),ty=T.UNIT}
             end
