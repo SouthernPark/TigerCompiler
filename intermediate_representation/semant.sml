@@ -326,9 +326,19 @@ trvar: Absyn.var -> expty
                        )
                       | _ => (error pos ("Undefined type " ^ S.name name))
                     end
+                fun detectDuplicateNames([], typelist) = ()
+                  | detectDuplicateNames(cur_tydec::l, typelist) =
+                    let
+                      val {name, ty, pos} = cur_tydec
+                    in
+                      if List.exists (fn cur_ty => S.name cur_ty = S.name name) typelist
+                      then error pos ("There's a duplicate type name in this mutual tydec groups. ")
+                      else detectDuplicateNames(l, name::typelist)
+                    end
                 val tenv' = foldl putHeaders tenv typedecs
                 val complete_tenv = foldl processBodies tenv' typedecs
               in
+                detectDuplicateNames(typedecs, []);
                 detectIllegalCycles(typedecs, complete_tenv, []);
                 {venv=venv, tenv=complete_tenv}
               end
@@ -370,7 +380,17 @@ trvar: Absyn.var -> expty
                       if isSubTy(actual_ty body_rt, actual_ty rt) then ()
                       else error pos' ("Function return: type "^ (T.name(actual_ty body_rt)) ^ " is not a subtype of type " ^ (T.name(actual_ty rt)))
                     end
+                fun detectDuplicateNames([], funlist) = ()
+                  | detectDuplicateNames(cur_fundec::l, funlist) =
+                    let
+                      val {name=name', params=fields, result=result', body=_, pos=pos'} = cur_fundec
+                    in
+                      if List.exists (fn cur_fun => S.name cur_fun = S.name name') funlist
+                      then error pos' ("There's a duplicate fun name in this mutual fundec groups. ")
+                      else detectDuplicateNames(l, name'::funlist)
+                    end
               in
+                detectDuplicateNames(fundecs, []);
                 map parseBody fundecs;
                 {venv=venv', tenv=tenv}
               end
