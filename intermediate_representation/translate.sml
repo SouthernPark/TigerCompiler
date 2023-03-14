@@ -8,6 +8,10 @@ sig
     val newLevel : {parent: level, name: Temp.label,formals: bool list} -> level
     val formals: level -> access list
     val allocLocal: level -> bool -> access
+    (* val transSIMPLEVAR: access * level -> exp
+    val transFIELDVAR: exp * int -> exp
+    val transSUBSCRIPTVAR: exp * exp -> exp *)
+    val transIF : exp * exp * exp -> exp
 end
 
 
@@ -16,6 +20,7 @@ struct
 
 structure F = MipsFrame
 structure T = Tree
+structure A = Absyn
 
 datatype exp = Ex of T.exp
 	  |Nx of T.stm
@@ -77,6 +82,34 @@ fun unCx (Ex e) = (case e of T.CONST 0 => (fn (t, f) => T.JUMP(T.NAME f, [f]))
   | unCx (Nx s) = raise ErrorMsg.Error
   | unCx (Cx c) = c
 
+(* static links *)
+(* fun followSL () *)
+
+(* NIL exp *)
+fun transNIL () = Ex(T.CONST 0)
+
+(* int exp *)
+fun transINT (x) = Ex(T.CONST x)
+
+(* string exp *)
+
+(* math operators *)
+fun transBINOP (left, right, oper) =
+  let
+    val left' = unEx left
+    val right' = unEx right
+    val oper' = case oper of A.PlusOp => T.PLUS
+                           | A.MinusOp => T.MINUS
+                           | A.TimesOp => T.MUL
+                           | A.DivideOp => T.DIV
+                           | _ => raise ErrorMsg.Error
+  in
+    Ex(T.BINOP(oper', left', right'))
+  end
+
+(* comparison operators *)
+
+
 (* if expression *)
 fun transIF (testexp, thenexp, elseexp) =
   let
@@ -99,7 +132,50 @@ fun transIF (testexp, thenexp, elseexp) =
                     T.TEMP ans))
   end
 
+(* record exp *)
 
+(* array exp *)
+
+(* assign exp *)
+fun transASSIGN (var, exp) =
+  let
+    val var' = unEx var
+    val exp' = unEx exp
+  in
+    Nx(T.MOVE(var', exp'))
+  end
+
+(* call exp *)
+
+(* let exp *)
+fun transLET (decs, body) =
+  let
+    val decs' = map unNx decs
+    val body' = unEx body
+  in
+    case List.length decs' of 0 => Ex(body')
+                            | _ => Ex(T.ESEQ(seq decs', body'))
+  end
+
+(* seq exp *)
+fun transSEQ [] = Ex(T.CONST 0)
+  | transSEQ [exp] = exp
+  | transSEQ (exp::explst) = Ex(T.ESEQ(unNx(exp), unEx(transSEQ explst)))
+
+(* for exp *)
+
+(* while exp *)
+
+(* break exp *)
+
+(* simple var *)
+(* fun transSIMPLEVAR *)
+
+(* field var of array *)
+fun transFIELDVAR (array, index) = Ex(T.MEM(T.BINOP(T.PLUS, unEx array, T.CONST(F.wordsize * index))))
+
+(* subscript var of record *)
+(* fun transSUBSCRIPTVAR *)
 
 end
 
