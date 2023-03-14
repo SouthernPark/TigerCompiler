@@ -8,10 +8,18 @@ sig
     val newLevel : {parent: level, name: Temp.label,formals: bool list} -> level
     val formals: level -> access list
     val allocLocal: level -> bool -> access
+    val transNIL : unit -> exp
+    val transINT : int -> exp
+    val transBINOP : exp * exp * Absyn.oper -> exp
+    val transIF : exp * exp * exp -> exp
+    val transASSIGN : exp * exp -> exp
+    val transLET : exp list * exp -> exp
+    val transSEQ : exp list -> exp
+    val transWHILE : exp * exp * Temp.label -> exp
+    val transBREAK : Temp.label -> exp
     (* val transSIMPLEVAR: access * level -> exp
     val transFIELDVAR: exp * int -> exp
     val transSUBSCRIPTVAR: exp * exp -> exp *)
-    val transIF : exp * exp * exp -> exp
 end
 
 
@@ -165,8 +173,23 @@ fun transSEQ [] = Ex(T.CONST 0)
 (* for exp *)
 
 (* while exp *)
+fun transWHILE (test, body, label_end) =
+  let
+    val label_test = Temp.newlabel()
+    val label_start = Temp.newlabel()
+    val test' = unCx test
+    val body' = unNx body
+  in
+    Nx(seq [T.JUMP(T.NAME label_test, [label_test]),
+            T.LABEL label_start,
+            body',
+            T.LABEL label_test,
+            test'(label_start, label_end),
+            T.LABEL label_end])
+  end
 
 (* break exp *)
+fun transBREAK (label_break) = Nx(T.JUMP(T.NAME label_break, [label_break]))
 
 (* simple var *)
 (* fun transSIMPLEVAR *)
