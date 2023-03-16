@@ -24,6 +24,7 @@ fun allocLocal {name, formals, numLocalVars, curOffSet} isEscape =
      |  false => InReg(Temp.newtemp())
     )	
 						
-						
+fun externalCall (s, args) = Tree.CALL(Tree.NAME(Temp.namedlabel s), args)
+
 end
     
