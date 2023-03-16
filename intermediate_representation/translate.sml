@@ -168,7 +168,7 @@ fun transARRAY (size, init) =
   in
     Ex(T.ESEQ(seq [T.MOVE(T.TEMP ptr, F.externalCall("initArray", [total_size, init'])),
                     T.MOVE(T.MEM(T.TEMP ptr), size'),
-                    T.MOVE(T.TEMP ptr, T.BINOP(T.PLUS, T.TEMP ptr, T.CONST(F.wordsize)))],
+                    T.MOVE(T.TEMP ptr, T.BINOP(T.PLUS, T.TEMP ptr, T.CONST F.wordsize))],
                     T.TEMP ptr))
   end
 
@@ -196,9 +196,29 @@ fun transLET (decs, body) =
 (* seq exp *)
 fun transSEQ [] = Ex(T.CONST 0)
   | transSEQ [exp] = exp
-  | transSEQ (exp::explst) = Ex(T.ESEQ(unNx(exp), unEx(transSEQ explst)))
+  | transSEQ (exp::explst) = Ex(T.ESEQ(unNx exp, unEx(transSEQ explst)))
 
 (* for exp *)
+fun transFOR (lo, hi, body, label_end) = 
+  let
+    val lo' = unEx lo
+    val hi' = unEx hi
+    val body' = unNx body
+    val v = Temp.newtemp()
+    val end_reg = Temp.newtemp()
+    val label_1 = Temp.newlabel()
+    val label_2 = Temp.newlabel()
+  in
+    Nx(seq [T.MOVE(T.TEMP v, lo'),
+            T.MOVE(T.TEMP end_reg, hi'),
+            T.CJUMP(T.LE, T.TEMP v, T.TEMP end_reg, label_2, label_end),
+            T.LABEL label_1,
+            T.MOVE(T.TEMP v, T.BINOP(T.PLUS, T.TEMP v, T.CONST 1)),
+            T.LABEL label_2,
+            body',
+            T.CJUMP(T.LT, T.TEMP v, T.TEMP end_reg, label_1, label_end),
+            T.LABEL label_end])
+  end
 
 (* while exp *)
 fun transWHILE (test, body, label_end) =
@@ -244,7 +264,7 @@ fun transSUBSCRIPTVAR (array, index) =
                     T.LABEL label_error,
                     T.EXP(F.externalCall("exit", [T.CONST 1])),
                     T.LABEL label_valid],
-                    T.MEM(T.BINOP(T.PLUS, T.TEMP array_ptr, T.BINOP(T.MUL, T.TEMP index_reg, T.CONST(F.wordsize))))))
+                    T.MEM(T.BINOP(T.PLUS, T.TEMP array_ptr, T.BINOP(T.MUL, T.TEMP index_reg, T.CONST F.wordsize)))))
   end
 
 end
