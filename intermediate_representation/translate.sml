@@ -19,9 +19,9 @@ sig
     val transSEQ : exp list -> exp
     val transWHILE : exp * exp * Temp.label -> exp
     val transBREAK : Temp.label -> exp
-    (* val transSIMPLEVAR: access * level -> exp
+    (* val transSIMPLEVAR: access * level -> exp *)
     val transFIELDVAR: exp * int -> exp
-    val transSUBSCRIPTVAR: exp * exp -> exp *)
+    val transSUBSCRIPTVAR: exp * exp -> exp
 end
 
 
@@ -222,11 +222,30 @@ fun transBREAK (label_break) = Nx(T.JUMP(T.NAME label_break, [label_break]))
 (* simple var *)
 (* fun transSIMPLEVAR *)
 
-(* field var of array *)
-fun transFIELDVAR (array, index) = Ex(T.MEM(T.BINOP(T.PLUS, unEx array, T.CONST(F.wordsize * index))))
+(* field var of record *)
+fun transFIELDVAR (record, index) = Ex(T.MEM(T.BINOP(T.PLUS, unEx record, T.CONST(F.wordsize * index))))
 
-(* subscript var of record *)
-(* fun transSUBSCRIPTVAR *)
+(* subscript var of array *)
+fun transSUBSCRIPTVAR (array, index) = 
+  let
+    val array' = unEx array
+    val index' = unEx index
+    val array_ptr = Temp.newtemp()
+    val index_reg = Temp.newtemp()
+    val label_error = Temp.newlabel()
+    val label_continue = Temp.newlabel()
+    val label_valid = Temp.newlabel()
+  in
+    Ex(T.ESEQ(seq [T.MOVE(T.TEMP array_ptr, array'),
+                    T.MOVE(T.TEMP index_reg, index'),
+                    T.CJUMP(T.LE, T.TEMP index_reg, T.CONST 0, label_error, label_continue),
+                    T.LABEL label_continue,
+                    T.CJUMP(T.GE, T.TEMP index_reg, T.MEM(T.BINOP(T.MINUS, T.TEMP array_ptr, T.CONST 1)), label_error, label_valid),
+                    T.LABEL label_error,
+                    T.EXP(F.externalCall("exit", [T.CONST 1])),
+                    T.LABEL label_valid],
+                    T.MEM(T.BINOP(T.PLUS, T.TEMP array_ptr, T.BINOP(T.MUL, T.TEMP index_reg, T.CONST(F.wordsize))))))
+  end
 
 end
 
