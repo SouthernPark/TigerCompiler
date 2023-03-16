@@ -17,6 +17,7 @@ sig
     val transASSIGN : exp * exp -> exp
     val transLET : exp list * exp -> exp
     val transSEQ : exp list -> exp
+    val transFOR : exp * exp * exp * Temp.label -> exp
     val transWHILE : exp * exp * Temp.label -> exp
     val transBREAK : Temp.label -> exp
     (* val transSIMPLEVAR: access * level -> exp *)
