@@ -12,6 +12,8 @@ sig
     val transINT : int -> exp
     val transBINOP : exp * exp * Absyn.oper -> exp
     val transIF : exp * exp * exp -> exp
+    val transRECORD : exp list -> exp
+    val transARRAY : exp * exp -> exp
     val transASSIGN : exp * exp -> exp
     val transLET : exp list * exp -> exp
     val transSEQ : exp list -> exp
@@ -141,8 +143,34 @@ fun transIF (testexp, thenexp, elseexp) =
   end
 
 (* record exp *)
+fun transRECORD (fields) =
+  let
+    val fields_len = List.length fields
+    val ptr = Temp.newtemp()
+    fun initField ([], stmlist, index) = stmlist
+      | initField (curr_exp::l, stmlist, index) = 
+        let
+          val statement = T.MOVE(T.MEM(T.BINOP(T.PLUS, T.TEMP ptr, T.CONST(F.wordsize * index))), unEx curr_exp)
+        in
+          initField (l, statement::stmlist, index + 1)
+        end
+  in
+    Ex(T.ESEQ(seq (initField(fields, [], 0)), T.TEMP ptr))
+  end
 
 (* array exp *)
+fun transARRAY (size, init) =
+  let
+    val size' = unEx size
+    val init' = unEx init
+    val total_size = T.BINOP(T.PLUS, size', T.CONST 1)
+    val ptr = Temp.newtemp()
+  in
+    Ex(T.ESEQ(seq [T.MOVE(T.TEMP ptr, F.externalCall("initArray", [total_size, init'])),
+                    T.MOVE(T.MEM(T.TEMP ptr), size'),
+                    T.MOVE(T.TEMP ptr, T.BINOP(T.PLUS, T.TEMP ptr, T.CONST(F.wordsize)))],
+                    T.TEMP ptr))
+  end
 
 (* assign exp *)
 fun transASSIGN (var, exp) =
