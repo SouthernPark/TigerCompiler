@@ -11,6 +11,7 @@ sig
     val transNIL : unit -> exp
     val transINT : int -> exp
     val transBINOP : exp * exp * Absyn.oper -> exp
+    val transRELOP : exp * exp * Absyn.oper * Types.ty -> exp
     val transIF : exp * exp * exp -> exp
     val transRECORD : exp list -> exp
     val transARRAY : exp * exp -> exp
@@ -119,7 +120,29 @@ fun transBINOP (left, right, oper) =
   end
 
 (* comparison operators *)
-
+fun transRELOP (left, right, oper, ty) =
+  let
+    val left' = unEx left
+    val right' = unEx right
+    val oper' = case oper of A.EqOp => T.EQ
+                           | A.NeqOp => T.NE
+                           | A.LtOp => T.LT
+                           | A.LeOp => T.LE
+                           | A.GtOp => T.GT
+                           | A.GeOp => T.GE
+                           | _ => raise ErrorMsg.Error
+    val string_oper = case oper of A.EqOp => "stringEqual"
+                           | A.NeqOp => "stringNE"
+                           | A.LtOp => "stringLT"
+                           | A.LeOp => "stringLE"
+                           | A.GtOp => "stringGT"
+                           | A.GeOp => "stringGE"
+                           | _ => raise ErrorMsg.Error
+    val cond = Cx(fn(t, f) => T.CJUMP(oper', left', right', t, f))
+  in
+    case ty of Types.STRING => Ex(F.externalCall(string_oper, [left', right']))
+             | _ => cond
+  end
 
 (* if expression *)
 fun transIF (testexp, thenexp, elseexp) =
