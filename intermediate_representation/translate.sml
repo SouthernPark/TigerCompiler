@@ -1,31 +1,33 @@
 signature TRANSLATE =
 sig
-    type level
-    type access (* not the same as Frame.access *)
-    type exp
 
-    val outermost : level
-    val newLevel : {parent: level, name: Temp.label,formals: bool list} -> level
-    val formals: level -> access list
-    val allocLocal: level -> bool -> access
-    val transNIL : unit -> exp
-    val transINT : int -> exp
-    val transBINOP : exp * exp * Absyn.oper -> exp
-    val transRELOP : exp * exp * Absyn.oper * Types.ty -> exp
-    val transIF : exp * exp * exp -> exp
-    val transRECORD : exp list -> exp
-    val transARRAY : exp * exp -> exp
-    val transASSIGN : exp * exp -> exp
-    val transLET : exp list * exp -> exp
-    val transSEQ : exp list -> exp
-    val transFOR : exp * exp * exp * Temp.label -> exp
-    val transWHILE : exp * exp * Temp.label -> exp
-    val transBREAK : Temp.label -> exp
-    (* val transSIMPLEVAR: access * level -> exp *)
-    val transFIELDVAR: exp * int -> exp
-    val transSUBSCRIPTVAR: exp * exp -> exp
+  type level
+  type access (* not the same as Frame.access *)
+  (* type exp *) (* remove below datatype exp and TODO in structure *)
+  datatype exp = Ex of Tree.exp
+                |Nx of Tree.stm
+                |Cx of Temp.label * Temp.label -> Tree.stm
+                |TODO
+
+  val outermost : level
+  val newLevel : {parent: level, name: Temp.label,formals: bool list} -> level
+  val formals: level -> access list
+  val allocLocal: level -> bool -> access
+  val transNIL : unit -> exp
+  val transINT : int -> exp
+  val transBINOP : exp * exp * Absyn.oper -> exp
+  val transIF : exp * exp * exp -> exp
+  val transASSIGN : exp * exp -> exp
+  val transLET : exp list * exp -> exp
+  val transSEQ : exp list -> exp
+  val transWHILE : exp * exp * Temp.label -> exp
+  val transBREAK : Temp.label -> exp
+  val transCall: exp list * level * level * Temp.label -> exp
+
+(* val transSIMPLEVAR: access * level -> exp
+   val transFIELDVAR: exp * int -> exp
+   val transSUBSCRIPTVAR: exp * exp -> exp *)
 end
-
 
 structure Translate : TRANSLATE =
 struct
@@ -35,8 +37,10 @@ structure T = Tree
 structure A = Absyn
 
 datatype exp = Ex of T.exp
-	  |Nx of T.stm
-	  |Cx of Temp.label * Temp.label -> T.stm
+	      |Nx of T.stm
+              |Cx of Temp.label * Temp.label -> T.stm
+              |TODO
+
 
 datatype level = TOP | Level of {parent: level, frame:F.frame } * unit ref
 type access = level * F.access
@@ -172,7 +176,7 @@ fun transRECORD (fields) =
     val fields_len = List.length fields
     val ptr = Temp.newtemp()
     fun initField ([], stmlist, index) = stmlist
-      | initField (curr_exp::l, stmlist, index) = 
+      | initField (curr_exp::l, stmlist, index) =
         let
           val statement = T.MOVE(T.MEM(T.BINOP(T.PLUS, T.TEMP ptr, T.CONST(F.wordsize * index))), unEx curr_exp)
         in
@@ -207,6 +211,34 @@ fun transASSIGN (var, exp) =
 
 (* call exp *)
 
+fun isEqualLevel (TOP, TOP) = true
+  | isEqualLevel (TOP, _) = false
+  | isEqualLevel (_, TOP) = false
+  | isEqualLevel (Level(_, ref1), Level(_, ref2)) = (ref1 = ref2)
+
+(* return tree exp to get static link in the frame *)
+fun getSLFromFrame(access, fp_exp) = F.exp access fp_exp
+
+fun transCall(arg_exps, callerLevel, calleeLevel, calleeLabel) =
+    let
+      fun findStaticLink(callerLevel:level, calleeLevel:level, fp:T.exp) =
+          let val Level({parent=callerParent, frame=callerFrame}, _) = callerLevel
+              val Level({parent=calleeParent, frame=calleeFrame}, _) = calleeLevel
+          in
+            (* caller and callee at same level, we pass caller's sl to callee *)
+            if isEqualLevel(callerLevel, calleeLevel) then getSLFromFrame((hd (F.formals callerFrame)) ,fp)
+            else
+              (* caller has exactly one higher level than calle, then we pass caller's FP as sl *)
+              if isEqualLevel(callerLevel, calleeParent) then fp
+              (* caller has lower level then callee *)
+              else let val deref_fp = getSLFromFrame((hd (F.formals callerFrame)) ,fp) in findStaticLink(callerLevel, calleeParent, deref_fp) end
+          end
+      val sl = findStaticLink(callerLevel, calleeLevel, T.TEMP(F.FP))
+      val args_exps = map unEx arg_exps
+    in
+      Ex(T.CALL(T.NAME(calleeLabel), sl::args_exps))
+    end
+
 (* let exp *)
 fun transLET (decs, body) =
   let
@@ -223,7 +255,7 @@ fun transSEQ [] = Ex(T.CONST 0)
   | transSEQ (exp::explst) = Ex(T.ESEQ(unNx exp, unEx(transSEQ explst)))
 
 (* for exp *)
-fun transFOR (lo, hi, body, label_end) = 
+fun transFOR (lo, hi, body, label_end) =
   let
     val lo' = unEx lo
     val hi' = unEx hi
@@ -270,7 +302,7 @@ fun transBREAK (label_break) = Nx(T.JUMP(T.NAME label_break, [label_break]))
 fun transFIELDVAR (record, index) = Ex(T.MEM(T.BINOP(T.PLUS, unEx record, T.CONST(F.wordsize * index))))
 
 (* subscript var of array *)
-fun transSUBSCRIPTVAR (array, index) = 
+fun transSUBSCRIPTVAR (array, index) =
   let
     val array' = unEx array
     val index' = unEx index
