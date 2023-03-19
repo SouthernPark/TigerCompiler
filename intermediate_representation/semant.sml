@@ -61,53 +61,50 @@ struct
     | zip (l, []) = []
     | zip ((a1::l1), (a2::l2)) = (a1, a2) :: zip(l1, l2)
 
-  fun checkInt({exp, ty}, pos) = if isSubTy(ty, T.INT) then () else error pos ((T.name ty) ^ " is not a subtype of INT")
+  fun checkInt(ty, pos) = if isSubTy(ty, T.INT) then () else error pos ((T.name ty) ^ " is not a subtype of INT")
 
 
-  fun checkSameType({exp=exp1, ty=ty1},{exp=exp2, ty=ty2}, pos) =
+  (*string compare and int compare*)
+  fun checkSameType(ty1, ty2, pos) =
       if (isSubTy(actual_ty ty1, Types.INT) andalso isSubTy(actual_ty ty2, Types.INT)) then ()
       else
         if (isSubTy(actual_ty ty1, Types.STRING) andalso isSubTy(actual_ty ty2, Types.STRING)) then ()
         else error pos ("type " ^ (T.name (actual_ty ty1)) ^ " and type " ^ (T.name (actual_ty ty2)) ^" cannot be compared with <=, >=, >, <")
 
-  fun checkEqual({exp=exp1, ty=T.UNIT},{exp=exp2, ty=_}, pos) = error pos "unit type can not be compared"
-    | checkEqual({exp=exp1, ty=_},{exp=exp2, ty=T.UNIT}, pos) = error pos "unit type can not be compared"
-    | checkEqual({exp=exp1, ty=T.NIL},{exp=exp2, ty=NIL}, pos) = error pos "nil can not be compared with nil"
-    | checkEqual({exp=exp1, ty=ty1},{exp=exp2, ty=ty2}, pos)  = if (isSubTy(actual_ty ty1, actual_ty ty2) orelse isSubTy(actual_ty ty2, actual_ty ty1))
-                                                                then ()
-                                                                else error pos ("Type: " ^ T.name(actual_ty ty1) ^ " and " ^ T.name(actual_ty ty2) ^ " can not be compared")
+  (**)
+  fun checkEqual(T.UNIT, _, pos) = error pos "unit type can not be compared"
+    | checkEqual(_, T.UNIT, pos) = error pos "unit type can not be compared"
+    | checkEqual(T.NIL, T.NIL, pos) = error pos "nil can not be compared with nil"
+    | checkEqual(ty1, ty2, pos)  = if (isSubTy(actual_ty ty1, actual_ty ty2) orelse isSubTy(actual_ty ty2, actual_ty ty1))
+                                   then ()
+                                   else error pos ("Type: " ^ T.name(actual_ty ty1) ^ " and " ^ T.name(actual_ty ty2) ^ " can not be compared")
   fun getFormalsByFuncName(func_name, venv, pos) = case S.look(venv, func_name) of
                                                         SOME(E.FunEntry(r)) => Tr.formals(#level r)
                                                       | _ => (error pos ("Function: " ^ (S.name func_name) ^ " does not exist."); [])
 
-  fun transExp(venv, tenv, in_loop:(unit option), level:Tr.level) =
-      let fun trexp (A.NilExp) = {exp=Tr.TODO, ty=T.NIL}
-          | trexp (A.IntExp(int)) = {exp=Tr.TODO, ty=T.INT}
+  fun transExp(venv, tenv, loop_end_label:(Temp.label option), level:Tr.level) =
+      let fun trexp (A.NilExp) = {exp=Tr.transNIL(), ty=T.NIL}
+          | trexp (A.IntExp(int)) = {exp=Tr.transINT(int), ty=T.INT}
           | trexp (A.StringExp(string)) = {exp=Tr.TODO, ty=T.STRING}
           | trexp (A.VarExp(var)) = trvar var
-          (* math operators *)
-          | trexp (A.OpExp{left, oper=A.PlusOp, right, pos}) =
-            (checkInt(trexp left, pos); checkInt(trexp right, pos); {exp=Tr.TODO, ty=T.INT})
-          | trexp (A.OpExp{left, oper=A.MinusOp, right, pos}) =
-            (checkInt(trexp left, pos); checkInt(trexp right, pos); {exp=Tr.TODO, ty=T.INT})
-          | trexp (A.OpExp{left, oper=A.TimesOp, right, pos}) =
-            (checkInt(trexp left, pos); checkInt(trexp right, pos); {exp=Tr.TODO, ty=T.INT})
-          | trexp (A.OpExp{left, oper=A.DivideOp, right, pos}) =
-            (checkInt(trexp left, pos); checkInt(trexp right, pos); {exp=Tr.TODO, ty=T.INT})
-          (* comparison operators*)
-          | trexp (A.OpExp{left, oper=A.GeOp, right, pos}) =
-            (checkSameType(trexp left, trexp right, pos); {exp=Tr.TODO, ty=T.INT})
-          | trexp (A.OpExp{left, oper=A.GtOp, right, pos}) =
-            (checkSameType(trexp left, trexp right, pos); {exp=Tr.TODO, ty=T.INT})
-          | trexp (A.OpExp{left, oper=A.LeOp, right, pos}) =
-            (checkSameType(trexp left, trexp right, pos); {exp=Tr.TODO, ty=T.INT})
-          | trexp (A.OpExp{left, oper=A.LtOp, right, pos}) =
-            (checkSameType(trexp left, trexp right, pos); {exp=Tr.TODO, ty=T.INT})
-          | trexp (A.OpExp{left, oper=A.EqOp, right, pos}) =
-            (checkEqual(trexp left, trexp right, pos); {exp=Tr.TODO, ty=T.INT})
-          | trexp (A.OpExp{left, oper=A.NeqOp, right, pos}) =
-            (checkEqual(trexp left, trexp right, pos); {exp=Tr.TODO, ty=T.INT})
-          (*boolean operator*)
+          | trexp (A.OpExp{left, oper, right, pos}) =
+            let val {exp=left_exp, ty=left_ty} = trexp left
+                val {exp=right_exp, ty=right_ty} = trexp right
+                fun math_operator() = (checkInt(left_ty, pos); checkInt(right_ty, pos); {exp=Tr.transBINOP(left_exp, right_exp, A.PlusOp), ty=T.INT})
+                fun compare_operator() = (checkSameType(left_ty, right_ty, pos); {exp=Tr.transBINOP(left_exp, right_exp, A.PlusOp), ty=T.INT})
+                fun eq_operator() = (checkEqual(left_ty, right_ty, pos); {exp=Tr.transBINOP(left_exp, right_exp, A.PlusOp), ty=T.INT})
+            in
+              case oper of A.PlusOp => math_operator()
+                         | A.MinusOp => math_operator()
+                         | A.TimesOp => math_operator()
+                         | A.DivideOp => math_operator()
+                         | A.GeOp => compare_operator()
+                         | A.GtOp => compare_operator()
+                         | A.LeOp => compare_operator()
+                         | A.LtOp => compare_operator()
+                         | A.EqOp => eq_operator()
+                         | A.NeqOp => eq_operator()
+            end
           (*if expression*)
           | trexp (A.IfExp({test=test_exp, then'=then_exp, else'=NONE, pos=pos'})) =
             let val {exp=_, ty=test_ty} = trexp(test_exp)
@@ -164,17 +161,20 @@ struct
             | _ => (error pos ("Record type is undefined."); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
           )
           (* Array *)
-          | trexp (A.ArrayExp({typ, size, init, pos})) = (
-              checkInt(trexp size, pos);
+          | trexp (A.ArrayExp({typ, size, init, pos})) =
+            let val {exp=size_val, ty=size_ty} = trexp size
+                val () = checkInt(size_ty, pos);
+            in
+
               case S.look(tenv, typ) of SOME(array_ty) => (
-                case actual_ty array_ty of T.ARRAY(name_ty, unique) => (
-                  if isSubTy(actual_ty(#ty(trexp init)), actual_ty name_ty) then ({exp=Tr.TODO, ty=T.ARRAY(actual_ty name_ty, unique)})
-                  else (error pos ("Array types don't match."); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
-                )
-                | _ => (error pos ("Array type is undefined."); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
-              )
-              | _ => (error pos ("Array type is undefined."); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
-            )
+                 case actual_ty array_ty of T.ARRAY(name_ty, unique) => (
+                    if isSubTy(actual_ty(#ty(trexp init)), actual_ty name_ty) then ({exp=Tr.TODO, ty=T.ARRAY(actual_ty name_ty, unique)})
+                    else (error pos ("Array types don't match."); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
+                  )
+                                          | _ => (error pos ("Array type is undefined."); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
+               )
+                                      | _ => (error pos ("Array type is undefined."); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
+            end
           (*Assign*)
           | trexp (A.AssignExp{var, exp, pos}) =
             let val {ty=vartype, exp=varMem} = trvar var
@@ -215,9 +215,9 @@ struct
           (* let expression *)
           | trexp (A.LetExp{decs,body,pos}) =
             let
-              val {venv=venv', tenv=tenv'} = transDec(venv, tenv, decs, in_loop, level)
+              val {venv=venv', tenv=tenv'} = transDec(venv, tenv, decs, loop_end_label, level)
             in
-              transExp(venv', tenv', in_loop, level) body (* break may occur in let body *)
+              transExp(venv', tenv', loop_end_label, level) body (* break may occur in let body *)
             end
           | trexp (A.SeqExp(explst)) =
             let fun checkExprLst [] = {exp=Tr.TODO, ty= T.UNIT}
@@ -228,10 +228,12 @@ struct
             end
 	  | trexp (A.ForExp{var, escape, lo, hi, body, pos}) =
 	    let
-              val () = checkInt(trexp lo, pos)
-              val () = checkInt(trexp hi, pos)
+              val {exp=lo_val, ty=low_ty} = trexp lo
+              val {exp=hi_val, ty=hi_ty} = trexp hi
+              val () = checkInt(low_ty, pos)
+              val () = checkInt(hi_ty, pos)
               val venv' = S.enter(venv, var, E.VarEntry{access=Tr.allocLocal level (!escape), ty=T.INT})
-              val {exp=body_exp, ty=body_ty} = transExp(venv', tenv, SOME (), level) body (* body is inside loop *)
+              val {exp=body_exp, ty=body_ty} = transExp(venv', tenv, SOME(Temp.newlabel()), level) body
               val () = if isSubTy(actual_ty(body_ty), T.UNIT)
                        then () else (error pos (T.name (actual_ty body_ty) ^ " is not a subtype of UNIT."))
 	    in
@@ -239,8 +241,9 @@ struct
 	    end
 	  | trexp (A.WhileExp{test, body, pos}) =
             let
-              val () = checkInt(trexp test, pos)
-              val {exp=body_exp, ty=body_ty} = transExp(venv, tenv, SOME (), level) body (* body is inside loop *)
+              val {exp=test_val, ty=test_ty} = trexp test
+              val () = checkInt(test_ty, pos)
+              val {exp=body_exp, ty=body_ty} = transExp(venv, tenv, SOME(Temp.newlabel()), level) body
               val () = if isSubTy(actual_ty body_ty, T.UNIT)
                        then ()
                        else (error pos (T.name(actual_ty body_ty) ^ " is not a subtype of UNIT"))
@@ -248,9 +251,9 @@ struct
               {exp=Tr.TODO,ty=T.UNIT}
             end
 	  | trexp (A.BreakExp(pos)) =
-            let val () = case in_loop of NONE => error pos "not in a loop!"
-                                       | SOME(_) => ()
-            in {exp=Tr.TODO, ty=T.IMPOSSIBILITY} end
+            let val break_end_label = case loop_end_label of NONE => (error pos "not in a loop!"; Temp.newlabel())
+                                              | SOME(l) => l
+            in {exp=Tr.transBREAK(break_end_label), ty=T.IMPOSSIBILITY} end
 
         and trvar (A.SimpleVar(id,pos)) = (* check var binding exist : id *)
             (case S.look(venv,id) of
@@ -275,7 +278,8 @@ struct
           | trvar (A.SubscriptVar(v,exp,pos)) = (* check v[exp] type *)
             let
               val v_ty = actual_ty(#ty (trvar v))
-              val () = checkInt(trexp exp, pos)
+              val {exp=sub_val, ty=sub_ty} = trexp exp;
+              val () = checkInt(sub_ty, pos)
             in
               case v_ty of T.ARRAY(array_ty, _) => {exp=Tr.TODO, ty=actual_ty array_ty}
               |  _ => (error pos ("None array type cannot be subscripted"); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
@@ -283,12 +287,12 @@ struct
       in
         trexp
       end
-  and transDec (venv, tenv, [], in_loop:(unit option), level:Tr.level) = {venv = venv, tenv = tenv}
-    | transDec (venv, tenv, decs, in_loop:(unit option), level:Tr.level) =
+  and transDec (venv, tenv, [], loop_end_label:(Temp.label option), level:Tr.level) = {venv = venv, tenv = tenv}
+    | transDec (venv, tenv, decs, loop_end_label:(Temp.label option), level:Tr.level) =
           (* var dec with type not specified *)
       let fun trdec(A.VarDec{name, escape, typ=NONE, init, pos}, {venv, tenv}) = (* var x := exp *)
               let
-                val {exp, ty} = transExp(venv, tenv, in_loop, level) init (*in_loop -> var dec does not change loop level *)
+                val {exp, ty} = transExp(venv, tenv, loop_end_label, level) init (*var dec does not change loop level *)
                 val access = Tr.allocLocal level (!escape)
               in
                 (* var x := nil is not allowed *)
@@ -299,7 +303,7 @@ struct
             (* var dec with type specified *)
             | trdec(A.VarDec{name, escape, typ=SOME(symbol, pos1), init, pos=pos2}, {venv, tenv})  =
               let
-                val {exp, ty} = transExp(venv, tenv, in_loop, level) init (*in_loop -> var dec does not change loop level *)
+                val {exp, ty} = transExp(venv, tenv, loop_end_label, level) init (*var dec does not change loop level *)
                 val var_ty = actual_ty(transTy(tenv, A.NameTy(symbol, pos1)))
                 val ty = actual_ty(ty)
               in
