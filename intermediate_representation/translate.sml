@@ -1,5 +1,6 @@
 signature TRANSLATE =
 sig
+
   type level
   type access (* not the same as Frame.access *)
   (* type exp *) (* remove below datatype exp and TODO in structure *)
@@ -47,7 +48,7 @@ datatype exp = Ex of T.exp
 datatype level = TOP | Level of {parent: level, frame:F.frame } * unit ref
 type access = level * F.access
 type frag = F.frag
-val fraglist = ref [] : frag list ref 
+val fraglist = ref [] : frag list ref
 val outermost = TOP
 
 fun newLevel {parent, name, formals} =

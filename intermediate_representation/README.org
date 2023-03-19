@@ -22,6 +22,44 @@ also, in the structure remove /TODO/
 
 The reason I do this, is to pass compiler error when other trans func is not finished
 
+
+* check_list
+| name         | translated | tested |
+| NilExp       | yes        |        |
+| IntExp       | yes        |        |
+| PlusOp       | yes        |        |
+| MinusOp      | yes        |        |
+| TimesOp      | yes        |        |
+| DivideOp     | yes        |        |
+| EqOp         | yes        |        |
+| NeqOp        | yes        |        |
+| LtOp         | yes        |        |
+| LeOp         | yes        |        |
+| GtOp         | yes        |        |
+| GeOp         | yes        |        |
+| BreakExp     | yes        |        |
+| RecordExp    | no         |        |
+| WhileExp     | no         |        |
+| ForExp       | no         |        |
+| ArrayExp     | no         |        |
+| SimpleVar    | no         |        |
+| FieldVar     | no         |        |
+| SubscriptVar | no         |        |
+| VarExp       | no         |        |
+| StringExp    | no         |        |
+| CallExp      | no         |        |
+| SeqExp       | no         |        |
+| AssignExp    | no         |        |
+| IfExp        | no         |        |
+| TypeDec      | no         |        |
+| NameTy       | no         |        |
+| RecordTy     | no         |        |
+| ArrayTy      | no         |        |
+| base type    | no         |        |
+| base func    | no         |        |
+
+
+
 * Grader to read
 
 + we currently set all variables as escaping
@@ -33,6 +71,8 @@ The reason I do this, is to pass compiler error when other trans func is not fin
   - if the caller provide too many args, we just use the first k args, where k is equal to arg length of callee
   - if the callee func name does not exist, then we raise an ErrorMsg.Error
   - if there are type error in args, we pass as all correct args before the error args
++ how we handle break error:
+  - if the break lead to an error, we will pass a arbitrary loop end Label to transBreak func
 
 * Requirements
 
