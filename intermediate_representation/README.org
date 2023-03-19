@@ -4,11 +4,35 @@
 
 FRAME + Intermediate representation
 
+* TODO Imporant Imporant Imporant
+remove the following in signature of translate.sml
+#+BEGIN_SRC
+datatype exp = Ex of T.exp
+              |Nx of T.stm
+              |Cx of Temp.label * Temp.label -> T.stm
+              |TODO
+#+END_SRC
+
+and place with:
+#+BEGIN_SRC
+type exp
+#+END_SRC
+
+also, in the structure remove /TODO/
+
+The reason I do this, is to pass compiler error when other trans func is not finished
+
 * Grader to read
 
 + we currently set all variables as escaping
 + we changed the breakexp type to BOTTOM/IMPOSSIBILITY (in semant.sml) to keep consistent with our type system
 + we change the exit type to BOTTOM/IMPOSSIBILITY (in env.sml) to keep consistent  with type system
++ if the compiler can not find func name in CallExp, then we will raise error. (/raise ErrorMsg.Error/)
++ how we handle error cases in func call:
+  - if the caller does not provide enough args to callee, then we use as many as possible
+  - if the caller provide too many args, we just use the first k args, where k is equal to arg length of callee
+  - if the callee func name does not exist, then we raise an ErrorMsg.Error
+  - if there are type error in args, we pass as all correct args before the error args
 
 * Requirements
 
@@ -52,7 +76,6 @@ Semant can not call Frame directly to alloc frame, it calls translate to do that
 
 
 
-
 * update on var environment
 
 The current var entry in semantic analysis (previous chapter) is defined as:
@@ -71,7 +94,6 @@ datatype enventry = VarEntry of {access: Translate.access, ty: ty}
 access in VarEntry is used to find a variable in a function frame.
 
 level in FunEntry info about function nesting level (we use parent level, like linked list to handle that) and also function frame. Label is where we can access the function machine code in memory.
-
 
 * FRAME
 #+BEGIN_SRC
@@ -121,6 +143,28 @@ The content of array and record is just in the heap.
 
 
 
+* static link
+Static link is used by nested functions to fetch functions outside. Static link is passed when a function calls another function.
+
+we use unit ref to compare level (note, unit ref can only compared with =, in other words, we can only compare with equality rather than inequality).
+
+
+** passing static link in function call
+assume function f calls function g, there are three cases:
++ f is on the same level of g (we call g and f siblings), then f needs to pass its static link fetches from f's frame to g;
+  - this usually happens when recurse or mutual recurse
++ f has a higher level than g (g is defined as a nested func inside f), then f needs to pass its frame pointer to g
+  - It seems that f can only calls g that is one level below, cause for functions that are nested inside of g, f can not see it
+  - If f has a higher level than g, then g is defined in the let exp, f can only calls g in the body of let exp.
++ f has a lower level than g (this usually happens when nested function call outer functions), then we have to recusively find the parent frame of f until we reach the same level with g and use that static link.
+
+** fetch stack link from variable
+
+We need to need which frame we need to use to fetch the varablie. Variable also has a level.
+
++ If the variable is in the same level, then we use the current frame pointer.
++ If the variable's level is a parent level of function level, then we use the static link.
++ Otherwise, we recursively find the fucntion whose parent level is the same as the variable's level.
 
 
 
@@ -139,8 +183,7 @@ See also pages 168 and 261 for more discussion of the view shift
 
 Currently, we regarding every variables/arguments as escaping. Later on, we will implement what is described in page 138.
 
-
-
+** TODO fun name and var name have the same name (need to check)
 ** TODO fun name and var name have the same name (need to check)
 
 
