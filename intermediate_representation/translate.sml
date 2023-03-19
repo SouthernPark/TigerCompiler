@@ -1,6 +1,5 @@
 signature TRANSLATE =
 sig
-
   type level
   type access (* not the same as Frame.access *)
   (* type exp *) (* remove below datatype exp and TODO in structure *)
@@ -8,6 +7,7 @@ sig
                 |Nx of Tree.stm
                 |Cx of Temp.label * Temp.label -> Tree.stm
                 |TODO
+  type frag
 
   val outermost : level
   val newLevel : {parent: level, name: Temp.label,formals: bool list} -> level
@@ -27,6 +27,8 @@ sig
 (* val transSIMPLEVAR: access * level -> exp
    val transFIELDVAR: exp * int -> exp
    val transSUBSCRIPTVAR: exp * exp -> exp *)
+  val procEntryExit : {level: level, body: exp} -> unit
+  val getResult : unit -> frag list
 end
 
 structure Translate : TRANSLATE =
@@ -44,6 +46,8 @@ datatype exp = Ex of T.exp
 
 datatype level = TOP | Level of {parent: level, frame:F.frame } * unit ref
 type access = level * F.access
+type frag = F.frag
+val fraglist = ref [] : frag list ref 
 val outermost = TOP
 
 fun newLevel {parent, name, formals} =
@@ -108,6 +112,7 @@ fun transNIL () = Ex(T.CONST 0)
 fun transINT (x) = Ex(T.CONST x)
 
 (* string exp *)
+(* fun transSTRING (string) =  *)
 
 (* math operators *)
 fun transBINOP (left, right, oper) =
@@ -322,6 +327,17 @@ fun transSUBSCRIPTVAR (array, index) =
                     T.LABEL label_valid],
                     T.MEM(T.BINOP(T.PLUS, T.TEMP array_ptr, T.BINOP(T.MUL, T.TEMP index_reg, T.CONST F.wordsize)))))
   end
+
+(* side effect of remembering a PROC fragment *)
+fun procEntryExit ({level=TOP, body=_}) = (ErrorMsg.error 0 "procEntryExit for a function declared in outermost level "; ())
+  | procEntryExit ({level=Level({parent, frame}, unique), body=body}) =
+    let
+      val body' = unEx body
+    in
+      fraglist := !fraglist @ [F.PROC{body=T.MOVE(T.TEMP F.RV, body'), frame=frame}]
+    end
+
+fun getResult () = !fraglist
 
 end
 
