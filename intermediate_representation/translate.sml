@@ -27,8 +27,8 @@ sig
   val transBREAK : Temp.label -> exp
   val transCall: exp list * level * level * Temp.label -> exp
 
-(* val transSIMPLEVAR: access * level -> exp
-   val transFIELDVAR: exp * int -> exp
+  val transSIMPLEVAR: access * level -> exp
+(*   val transFIELDVAR: exp * int -> exp
    val transSUBSCRIPTVAR: exp * exp -> exp *)
   val procEntryExit : {level: level, body: exp} -> unit
   val getResult : unit -> frag list
@@ -240,13 +240,28 @@ fun transCall(arg_exps, callerLevel, calleeLevel, calleeLabel) =
               (* caller has exactly one higher level than calle, then we pass caller's FP as sl *)
               if isEqualLevel(callerLevel, calleeParent) then fp
               (* caller has lower level then callee *)
-              else let val deref_fp = getSLFromFrame((hd (F.formals callerFrame)) ,fp) in findStaticLink(callerLevel, calleeParent, deref_fp) end
+              else let val deref_fp = getSLFromFrame((hd (F.formals callerFrame)) ,fp) in findStaticLink(callerParent, calleeLevel, deref_fp) end
           end
       val sl = findStaticLink(callerLevel, calleeLevel, T.TEMP(F.FP))
       val args_exps = map unEx arg_exps
     in
       Ex(T.CALL(T.NAME(calleeLabel), sl::args_exps))
     end
+
+(* simple var *)
+fun transSIMPLEVAR ((varLevel, F.InReg(temp):F.access):access, funLevel) = Ex(T.MEM(T.TEMP(temp)))
+  | transSIMPLEVAR ((varLevel, F.InFrame(offset)):access, funLevel) =
+    let val Level({parent=funcParent, frame=funFrame}, _) = funLevel
+        val Level({parent=varParent, frame=varFrame}, _) = varLevel
+        fun findStaticLink(funcLevel, varLevel, fp) =
+            if isEqualLevel(funcLevel, varLevel) then fp
+            (*var level has a higher level*)
+            else let val deref_fp = getSLFromFrame((hd (F.formals funFrame)) ,fp) in findStaticLink(funcParent, varLevel, deref_fp) end
+        val sl = findStaticLink(funLevel, varLevel, T.TEMP(F.FP))
+    in
+      Ex(T.MEM(F.exp (F.InFrame(offset)) sl))
+    end
+
 
 (* let exp *)
 fun transLET (decs, body) =
@@ -304,8 +319,7 @@ fun transWHILE (test, body, label_end) =
 (* break exp *)
 fun transBREAK (label_break) = Nx(T.JUMP(T.NAME label_break, [label_break]))
 
-(* simple var *)
-(* fun transSIMPLEVAR *)
+
 
 (* field var of record *)
 fun transFIELDVAR (record, index) = Ex(T.MEM(T.BINOP(T.PLUS, unEx record, T.CONST(F.wordsize * index))))

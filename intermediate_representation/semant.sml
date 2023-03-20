@@ -78,9 +78,6 @@ struct
     | checkEqual(ty1, ty2, pos)  = if (isSubTy(actual_ty ty1, actual_ty ty2) orelse isSubTy(actual_ty ty2, actual_ty ty1))
                                    then ()
                                    else error pos ("Type: " ^ T.name(actual_ty ty1) ^ " and " ^ T.name(actual_ty ty2) ^ " can not be compared")
-  fun getFormalsByFuncName(func_name, venv, pos) = case S.look(venv, func_name) of
-                                                        SOME(E.FunEntry(r)) => Tr.formals(#level r)
-                                                      | _ => (error pos ("Function: " ^ (S.name func_name) ^ " does not exist."); [])
 
   fun transExp(venv, tenv, loop_end_label:(Temp.label option), level:Tr.level) =
       let fun trexp (A.NilExp) = {exp=Tr.transNIL(), ty=T.NIL}
@@ -266,12 +263,12 @@ struct
 
         and trvar (A.SimpleVar(id,pos)) = (* check var binding exist : id *)
             (case S.look(venv,id) of
-                SOME(E.VarEntry{access, ty}) => {exp=Tr.TODO, ty=actual_ty ty}
+                SOME(E.VarEntry{access, ty}) => {exp=Tr.transSIMPLEVAR(access, level), ty=actual_ty ty}
               | SOME(E.FunEntry{level=funLevel, label=funLabel, formals, result}) =>
                 (error pos ("var " ^ (S.name id) ^ " should be a variable rather than a func");
-                  {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
+                  {exp=Tr.Ex(Tree.CONST(0)), ty=T.IMPOSSIBILITY})
               | NONE =>
-                (error pos ("undefined variable " ^ S.name id); {exp=Tr.TODO, ty=T.INT}))
+                (error pos ("undefined variable " ^ S.name id); {exp=Tr.Ex(Tree.CONST(0)), ty=T.INT}))
           | trvar (A.FieldVar(v,sym,pos)) = (* check v.sym type *)
             let
               val v_ty = actual_ty(#ty (trvar v))
@@ -371,9 +368,10 @@ struct
                         val formals' = foldr (fn (field, ans) => (actual_ty (getTyFromSym(tenv, (#typ field))))::ans) [] fields
                         val result_type = case result' of SOME(sym, pos1) => actual_ty(getTyFromSym(tenv, sym))
                                                          | NONE => T.UNIT (*func does not specify return type is a procedure*)
-                        val funLabel = Temp.newlabel() (* address for the function's machine code *)
                         val formals_escape = foldr (fn (field, ans) => (!(#escape field)::ans)) [] fields
-                        val funLevel = Tr.newLevel({parent=level, name=funLabel, formals=formals_escape})
+                        (* fun entry's level is the same as cur level *)
+                        val funLabel = Temp.newlabel() (* address for the function's machine code *)
+                        val funLevel = Tr.newLevel({parent=level, name=funLabel, formals=formals_escape}) (*deeper level*)
                         val entry = E.FunEntry{level=funLevel, label=funLabel, formals=formals', result=result_type}
                     in
                       S.enter(venv, name', entry)
@@ -384,7 +382,12 @@ struct
                 (* Parse the body of a func *)
                 fun parseBody ({name=name', params=params', result=result', body=body', pos=pos'}:A.fundec) =
                     let
-                      val param_access_lst = getFormalsByFuncName(name', venv', pos')
+                      val {level=func_level, label=_, formals=_, result=rt} =
+                          case S.look(venv, name') of
+                              SOME(E.FunEntry(r)) => r
+                            | _ => (error pos' ("Function: " ^ (S.name name') ^ " does not exist."); raise ErrorMsg.Error)
+
+                      val param_access_lst = Tr.formals func_level
                       val param_zip = zip(params', param_access_lst)
                       fun putParamInVenv((param:A.field, access:Tr.access), ans_venv) =
                           let val param_name = (#name param)
@@ -396,9 +399,9 @@ struct
 
                       (* put all the params in this func into venv *)
                       val func_venv = foldr putParamInVenv venv' param_zip
-                      val {exp=body_exp, ty=body_rt} = transExp(func_venv, tenv, NONE, level) body' (* NONE -> new fundec, not in loop *)
-                      val rt = case result' of SOME(sym, pos1) => actual_ty(getTyFromSym(tenv, sym))
-                                             | NONE => T.UNIT (* func does not specify return type is a procedure *)
+                      (* translate func body *)
+                      val {exp=body_exp, ty=body_rt} = transExp(func_venv, tenv, NONE, func_level) body' (* NONE -> new fundec, not in loop *)
+
                     in
                       if isSubTy(actual_ty body_rt, actual_ty rt) then ()
                       else error pos' ("Function return: type "^ (T.name(actual_ty body_rt)) ^ " is not a subtype of type " ^ (T.name(actual_ty rt)))
