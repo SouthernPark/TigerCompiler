@@ -1,6 +1,6 @@
 signature SEMANT =
 sig
-  val transProg: Absyn.exp -> unit
+  val transProg: Absyn.exp -> Translate.frag list
 end
 
 structure Semant :> SEMANT =
@@ -221,10 +221,10 @@ struct
           (* let expression *)
           | trexp (A.LetExp{decs,body,pos}) =
             let
-              val {venv=venv', tenv=tenv'} = transDec(venv, tenv, decs, loop_end_label, level)
+              val {venv=venv', tenv=tenv', exps=exps'} = transDec(venv, tenv, decs, loop_end_label, level)
               val {exp=body_exp, ty=body_ty} = transExp(venv', tenv', loop_end_label, level) body (* break may occur in let body *)
             in
-              {exp=Tr.TODO, ty=body_ty}
+              {exp=Tr.transLET(exps', body_exp), ty=body_ty}
             end
           | trexp (A.SeqExp(explst)) =
             let 
@@ -298,31 +298,32 @@ struct
       in
         trexp
       end
-  and transDec (venv, tenv, [], loop_end_label:(Temp.label option), level:Tr.level) = {venv = venv, tenv = tenv}
+  and transDec (venv, tenv, [], loop_end_label:(Temp.label option), level:Tr.level) = {venv = venv, tenv = tenv, exps=[]}
     | transDec (venv, tenv, decs, loop_end_label:(Temp.label option), level:Tr.level) =
           (* var dec with type not specified *)
-      let fun trdec(A.VarDec{name, escape, typ=NONE, init, pos}, {venv, tenv}) = (* var x := exp *)
+      let fun trdec(A.VarDec{name, escape, typ=NONE, init, pos}, {venv, tenv, exps}) = (* var x := exp *)
               let
                 val {exp, ty} = transExp(venv, tenv, loop_end_label, level) init (*var dec does not change loop level *)
                 val access = Tr.allocLocal level (!escape)
               in
                 (* var x := nil is not allowed *)
                 case ty of T.NIL => (error pos "NIL can not assign to var whose type is not determined";
-                                     {venv=S.enter(venv, name, E.VarEntry{access=access, ty=T.IMPOSSIBILITY}), tenv=tenv})
-                         | _ => {venv=S.enter(venv, name, E.VarEntry{access=access, ty=ty}), tenv=tenv}
+                                     {venv=S.enter(venv, name, E.VarEntry{access=access, ty=T.IMPOSSIBILITY}), tenv=tenv, exps=exps})
+                         | _ => {venv=S.enter(venv, name, E.VarEntry{access=access, ty=ty}), tenv=tenv, exps=exps@[Tr.transVARDEC(access, level, exp)]}
               end
             (* var dec with type specified *)
-            | trdec(A.VarDec{name, escape, typ=SOME(symbol, pos1), init, pos=pos2}, {venv, tenv})  =
+            | trdec(A.VarDec{name, escape, typ=SOME(symbol, pos1), init, pos=pos2}, {venv, tenv, exps})  =
               let
                 val {exp, ty} = transExp(venv, tenv, loop_end_label, level) init (*var dec does not change loop level *)
+                val access = Tr.allocLocal level (!escape)
                 val var_ty = actual_ty(transTy(tenv, A.NameTy(symbol, pos1)))
                 val ty = actual_ty(ty)
               in
                 if not (isSubTy(ty, var_ty)) then error pos2 (T.name(ty) ^ " is not a subtype of " ^ T.name(var_ty)) else ();
-                {venv=S.enter(venv, name, E.VarEntry{access=Tr.allocLocal level (!escape), ty=var_ty}), tenv=tenv}
+                {venv=S.enter(venv, name, E.VarEntry{access=access, ty=var_ty}), tenv=tenv, exps=exps@[Tr.transVARDEC(access, level, exp)]}
               end
             (* typedecs *)
-            | trdec(A.TypeDec(typedecs), {venv, tenv}) =
+            | trdec(A.TypeDec(typedecs), {venv, tenv, exps}) =
               let
                 fun putHeaders(cur_tydec, tenv) = (* put all the headers in tenv -> tenv' *)
                     let val {name, ty, pos} = cur_tydec
@@ -362,10 +363,10 @@ struct
               in
                 detectDuplicateNames(typedecs, []);
                 detectIllegalCycles(typedecs, complete_tenv, []);
-                {venv=venv, tenv=complete_tenv}
+                {venv=venv, tenv=complete_tenv, exps=exps}
               end
 
-            | trdec (A.FunctionDec(fundecs), {venv, tenv}) =
+            | trdec (A.FunctionDec(fundecs), {venv, tenv, exps}) =
               let
                 (* enter each funcDec's signature (name, arg types) into venv *)
                 fun addFuncSig(fundec:A.fundec, venv) =
@@ -406,7 +407,8 @@ struct
                       val func_venv = foldr putParamInVenv venv' param_zip
                       (* translate func body *)
                       val {exp=body_exp, ty=body_rt} = transExp(func_venv, tenv, NONE, func_level) body' (* NONE -> new fundec, not in loop *)
-
+                      (* remember the proc fragment *)
+                      val proc_entry_exit = Tr.procEntryExit({level=func_level, body=body_exp})
                     in
                       if isSubTy(actual_ty body_rt, actual_ty rt) then ()
                       else error pos' ("Function return: type "^ (T.name(actual_ty body_rt)) ^ " is not a subtype of type " ^ (T.name(actual_ty rt)))
@@ -423,11 +425,11 @@ struct
               in
                 detectDuplicateNames(fundecs, []);
                 map parseBody fundecs;
-                {venv=venv', tenv=tenv}
+                {venv=venv', tenv=tenv, exps=exps}
               end
 
       in
-        foldl trdec {venv=venv, tenv=tenv} decs
+        foldl trdec {venv=venv, tenv=tenv, exps=[]} decs
       end
 
   and transTy (tenv, ty) =
@@ -454,11 +456,15 @@ struct
                )
 
 
-  fun transProg(exp:A.exp):unit =
+  fun transProg(exp:A.exp) =
       let
+        val reset_frags = Tr.resetResult()
         val tig_main_level = Tr.newLevel({parent=Tr.outermost, name=Temp.newlabel(),formals=[]})
+        val {exp, ty} = transExp (E.base_venv, E.base_tenv, NONE, tig_main_level) (exp)
+        val proc_entry_exit = Tr.procEntryExit({level=tig_main_level, body=exp})
+        val frags = Tr.getResult()
       in
-	  transExp (E.base_venv, E.base_tenv, NONE, tig_main_level) (exp);()
+        frags
       end
 
   (* NONE -> initially no loop *)
