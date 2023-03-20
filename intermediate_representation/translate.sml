@@ -18,6 +18,8 @@ sig
   val transINT : int -> exp
   val transBINOP : exp * exp * Absyn.oper -> exp
   val transIF : exp * exp * exp -> exp
+  val transRECORD : exp list -> exp
+  val transARRAY : exp * exp -> exp
   val transASSIGN : exp * exp -> exp
   val transLET : exp list * exp -> exp
   val transSEQ : exp list -> exp
@@ -30,6 +32,7 @@ sig
    val transSUBSCRIPTVAR: exp * exp -> exp *)
   val procEntryExit : {level: level, body: exp} -> unit
   val getResult : unit -> frag list
+  val ERROREXP : exp
 end
 
 structure Translate : TRANSLATE =
@@ -339,6 +342,8 @@ fun procEntryExit ({level=TOP, body=_}) = (ErrorMsg.error 0 "procEntryExit for a
     end
 
 fun getResult () = !fraglist
+
+val ERROREXP = transINT(0)
 
 end
 
