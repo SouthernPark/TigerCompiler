@@ -222,15 +222,18 @@ struct
           | trexp (A.LetExp{decs,body,pos}) =
             let
               val {venv=venv', tenv=tenv'} = transDec(venv, tenv, decs, loop_end_label, level)
+              val {exp=body_exp, ty=body_ty} = transExp(venv', tenv', loop_end_label, level) body (* break may occur in let body *)
             in
-              transExp(venv', tenv', loop_end_label, level) body (* break may occur in let body *)
+              {exp=Tr.TODO, ty=body_ty}
             end
           | trexp (A.SeqExp(explst)) =
-            let fun checkExprLst [] = {exp=Tr.TODO, ty= T.UNIT}
-                | checkExprLst [(exp, pos)] = trexp exp
-                | checkExprLst ((exp,pos)::l) = (trexp exp; checkExprLst l)
+            let 
+              val last_exp_ty = T.UNIT
+              fun checkExprLst ([], exps) = exps
+                | checkExprLst ([(exp, pos)], exps) = (last_exp_ty=(#ty(trexp exp)); checkExprLst([], exps@[(#exp(trexp exp))]))
+                | checkExprLst ((exp, pos)::l, exps) = (checkExprLst(l, exps@[(#exp(trexp exp))]))
             in
-              checkExprLst explst
+              {exp=Tr.transSEQ(checkExprLst(explst, [])), ty=last_exp_ty}
             end
 	  | trexp (A.ForExp{var, escape, lo, hi, body, pos}) =
 	    let
@@ -239,22 +242,24 @@ struct
               val () = checkInt(low_ty, pos)
               val () = checkInt(hi_ty, pos)
               val venv' = S.enter(venv, var, E.VarEntry{access=Tr.allocLocal level (!escape), ty=T.INT})
-              val {exp=body_exp, ty=body_ty} = transExp(venv', tenv, SOME(Temp.newlabel()), level) body
+              val label_end = Temp.newlabel()
+              val {exp=body_exp, ty=body_ty} = transExp(venv', tenv, SOME(label_end), level) body
               val () = if isSubTy(actual_ty(body_ty), T.UNIT)
                        then () else (error pos (T.name (actual_ty body_ty) ^ " is not a subtype of UNIT."))
 	    in
-              {exp=Tr.TODO,ty=T.UNIT}
+              {exp=Tr.transFOR(lo_val, hi_val, body_exp, label_end), ty=T.UNIT}
 	    end
 	  | trexp (A.WhileExp{test, body, pos}) =
             let
               val {exp=test_val, ty=test_ty} = trexp test
               val () = checkInt(test_ty, pos)
-              val {exp=body_exp, ty=body_ty} = transExp(venv, tenv, SOME(Temp.newlabel()), level) body
+              val label_end = Temp.newlabel()
+              val {exp=body_exp, ty=body_ty} = transExp(venv, tenv, SOME(label_end), level) body
               val () = if isSubTy(actual_ty body_ty, T.UNIT)
                        then ()
                        else (error pos (T.name(actual_ty body_ty) ^ " is not a subtype of UNIT"))
             in
-              {exp=Tr.TODO,ty=T.UNIT}
+              {exp=Tr.transWHILE(test_val, body_exp, label_end),ty=T.UNIT}
             end
 	  | trexp (A.BreakExp(pos)) =
             let val break_end_label = case loop_end_label of NONE => (error pos "not in a loop!"; Temp.newlabel())
@@ -266,29 +271,29 @@ struct
                 SOME(E.VarEntry{access, ty}) => {exp=Tr.transSIMPLEVAR(access, level), ty=actual_ty ty}
               | SOME(E.FunEntry{level=funLevel, label=funLabel, formals, result}) =>
                 (error pos ("var " ^ (S.name id) ^ " should be a variable rather than a func");
-                  {exp=Tr.Ex(Tree.CONST(0)), ty=T.IMPOSSIBILITY})
+                  {exp=Tr.ERROREXP, ty=T.IMPOSSIBILITY})
               | NONE =>
-                (error pos ("undefined variable " ^ S.name id); {exp=Tr.Ex(Tree.CONST(0)), ty=T.INT}))
+                (error pos ("undefined variable " ^ S.name id); {exp=Tr.ERROREXP, ty=T.INT}))
           | trvar (A.FieldVar(v,sym,pos)) = (* check v.sym type *)
             let
-              val v_ty = actual_ty(#ty (trvar v))
-              fun getSymType([],sym,pos) = (error pos ("Symbol " ^ (S.name sym) ^ " wasn't found in the record"); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
-                | getSymType((symbol, sym_ty)::l,sym,pos) =
+              val {exp=v_exp, ty=v_ty} = trvar v
+              fun getSymType([],sym,pos,index) = (error pos ("Symbol " ^ (S.name sym) ^ " wasn't found in the record"); {exp=Tr.ERROREXP, ty=T.IMPOSSIBILITY})
+                | getSymType((symbol, sym_ty)::l,sym,pos,index) =
                   if S.name symbol = S.name sym
-                  then {exp=Tr.TODO, ty=actual_ty sym_ty}
-                  else getSymType(l,sym,pos)
+                  then {exp=Tr.transFIELDVAR(v_exp, index), ty=actual_ty sym_ty}
+                  else getSymType(l,sym,pos,index+1)
             in
-              case v_ty of T.RECORD(fields_list,unique) => getSymType(fields_list,sym,pos)
-              | _ => (error pos ("None record type cannot find a field"); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
+              case (actual_ty v_ty) of T.RECORD(fields_list,unique) => getSymType(fields_list,sym,pos,0)
+              | _ => (error pos ("None record type cannot find a field"); {exp=Tr.ERROREXP, ty=T.IMPOSSIBILITY})
             end
           | trvar (A.SubscriptVar(v,exp,pos)) = (* check v[exp] type *)
             let
-              val v_ty = actual_ty(#ty (trvar v))
+              val {exp=v_val, ty=v_ty} = trvar v
               val {exp=sub_val, ty=sub_ty} = trexp exp;
               val () = checkInt(sub_ty, pos)
             in
-              case v_ty of T.ARRAY(array_ty, _) => {exp=Tr.TODO, ty=actual_ty array_ty}
-              |  _ => (error pos ("None array type cannot be subscripted"); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
+              case (actual_ty v_ty) of T.ARRAY(array_ty, _) => {exp=Tr.transSUBSCRIPTVAR(v_val, sub_val), ty=actual_ty array_ty}
+              |  _ => (error pos ("None array type cannot be subscripted"); {exp=Tr.ERROREXP, ty=T.IMPOSSIBILITY})
             end
       in
         trexp
