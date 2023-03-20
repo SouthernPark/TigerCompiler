@@ -1,6 +1,6 @@
 signature FRAME =
 sig type frame
-    type access
+    datatype access = InFrame of int | InReg of Temp.temp
     val FP: Temp.temp (* frame pointer register to hold current frame pointer *)
     val exp: access -> Tree.exp -> Tree.exp (* access -> FP -> var location *)
 

@@ -61,7 +61,7 @@ The reason I do this, is to pass compiler error when other trans func is not fin
 
 
 * Grader to read
-
++ for some error cases in translate, we will return a simple exp /Translate.Ex(Tree.CONST(0))/ instead of raise error
 + we currently set all variables as escaping
 + we changed the breakexp type to BOTTOM/IMPOSSIBILITY (in semant.sml) to keep consistent with our type system
 + we change the exit type to BOTTOM/IMPOSSIBILITY (in env.sml) to keep consistent  with type system
@@ -200,13 +200,163 @@ assume function f calls function g, there are three cases:
   - If f has a higher level than g, then g is defined in the let exp, f can only calls g in the body of let exp.
 + f has a lower level than g (this usually happens when nested function call outer functions), then we have to recusively find the parent frame of f until we reach the same level with g and use that static link.
 
-** fetch stack link from variable
+*** case1: f and g has same level
+
+#+BEGIN_SRC text
+  let
+	  var x := 1
+	  fun nest() =
+	      let
+		  fun f() = g()
+		  fun g() = x
+	      in
+		  f()
+	      end
+  in
+
+  end
+
+#+END_SRC
+
+When f calls g, we pass the static link stored in f's frame to g. (Because f and g are in the same level, so what can be accessed by f must be able to accessed by g)
+
+*** case2: f has a higher level than g
+
+**** could f has more than one higher level than g
+#+BEGIN_SRC text
+  let
+	  fun f() =
+	      let
+		  fun nest() =
+		      let
+			  fun g() = 1
+		      in
+		      end
+	      in
+		  g() // error
+	      end
+  in
+	  f()
+  end
+#+END_SRC
+
+In this case, f actually can not see g, so it can not call g. Therefore, f can only be one higher level than g.
+
+#+BEGIN_SRC text
+  let
+	  var x := 1
+	  fun f() =
+	      let
+		  fun g() = x
+	      in
+		  g()
+	      end
+  in
+	  f()
+  end
+#+END_SRC
+
+In this example, f has a higher level than g, we just need to pass current frame pointer.
+
+*** case2: f has a lower level than g
+#+BEGIN_SRC text
+  let
+	  fun g() = 1
+	  fun nest() =
+	      fun nest1() =
+		  let
+			  fun f() = g()
+		  in
+		  end
+  in
+	  nest()
+  end
+
+#+END_SRC
+
+In this case, when f calls g, f needs to recursively fetch static link until the level is same as g's. (f finds the static link stored in nest's frame, then pass it to g)
+
+
+** fetching element from stack using static link
 
 We need to need which frame we need to use to fetch the varablie. Variable also has a level.
 
 + If the variable is in the same level, then we use the current frame pointer.
 + If the variable's level is a parent level of function level, then we use the static link.
 + Otherwise, we recursively find the fucntion whose parent level is the same as the variable's level.
+
+*** could var has a lower level than cur level ?
+Example:
+#+BEGIN_SRC text
+  let
+	  fun f() =
+	      let var x := 3
+	      in
+		  x
+	      end
+	  x := x+1 //error
+  in
+  end
+#+END_SRC
+
+In the above example, x is defined in f() and in a deeper level, we can not access x from outside of f(). Therefore var level should be greater or equal than current level.
+
+*** case1: var level is the same as cur level
+Example:
+#+BEGIN_SRC text
+  let
+	  var x := 2
+  in
+	  x
+  end
+#+END_SRC
+
+or
+
+#+BEGIN_SRC text
+  let
+	  fun f() =
+	      let
+		  var x:= 1
+	      in
+		  x
+	      end
+  in
+  end
+
+
+#+END_SRC
+
+In above examples, x has the same level with current level, we can use current Frame Poitner to get the value of x.
+
+*** case2: var level is higher than cur_level
+Example:
+#+BEGIN_SRC text
+  let
+	  var x := 1
+	  fun f() = x + 1
+  in
+  f()
+  end
+#+END_SRC
+In this example, x is one level higher than cur_level, we need to use staic link in current frame to get the real Frame Pointer.
+
+Another example:
+#+BEGIN_SRC text
+  let
+	  var x := 1
+	  fun f() =
+	      let
+		  fun g() = x + 1
+	      in
+		  g()
+	      end
+  in
+  f()
+  end
+#+END_SRC
+
+In this example, x's level is two level higher than current level, so we need to find static by recurse twice.
 
 
 
