@@ -28,12 +28,13 @@ sig
   val transWHILE : exp * exp * Temp.label -> exp
   val transBREAK : Temp.label -> exp
   val transCall: exp list * level * level * Temp.label -> exp
-
   val transSIMPLEVAR: access * level -> exp
   val transFIELDVAR: exp * int -> exp
   val transSUBSCRIPTVAR: exp * exp -> exp
+  val transVARDEC: access * level * exp -> exp
   val procEntryExit : {level: level, body: exp} -> unit
   val getResult : unit -> frag list
+  val resetResult : unit -> unit
   val ERROREXP : exp
 end
 
@@ -361,6 +362,8 @@ fun transSUBSCRIPTVAR (array, index) =
                     T.MEM(T.BINOP(T.PLUS, T.TEMP array_ptr, T.BINOP(T.MUL, T.TEMP index_reg, T.CONST F.wordsize)))))
   end
 
+fun transVARDEC (access, level, exp) = transASSIGN(transSIMPLEVAR(access, level), exp)
+
 (* side effect of remembering a PROC fragment *)
 fun procEntryExit ({level=TOP, body=_}) = (ErrorMsg.error 0 "procEntryExit for a function declared in outermost level "; ())
   | procEntryExit ({level=Level({parent, frame}, unique), body=body}) =
@@ -371,6 +374,8 @@ fun procEntryExit ({level=TOP, body=_}) = (ErrorMsg.error 0 "procEntryExit for a
     end
 
 fun getResult () = !fraglist
+
+fun resetResult () = (fraglist := [])
 
 val ERROREXP = transINT(0)
 
