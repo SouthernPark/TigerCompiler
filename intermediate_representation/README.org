@@ -46,7 +46,7 @@ The reason I do this, is to pass compiler error when other trans func is not fin
 | FieldVar     | no         |        |
 | SubscriptVar | no         |        |
 | VarExp       | no         |        |
-| StringExp    | no         |        |
+| StringExp    | yes        |        |
 | CallExp      | no         |        |
 | SeqExp       | no         |        |
 | AssignExp    | yes        |        |
