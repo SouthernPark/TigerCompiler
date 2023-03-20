@@ -215,7 +215,7 @@ struct
                                               in
                                                 {exp=Tr.transCall(arg_exps, level, funLevel, funLabel), ty=rt}
                                               end
-                                            | _ => ((error pos' ("Function " ^ (S.name func_name) ^ " is not defined")); {exp=raise ErrorMsg.Error, ty=T.IMPOSSIBILITY})
+                                            | _ => ((error pos' ("Function " ^ (S.name func_name) ^ " is not defined")); {exp=Tr.ERROREXP, ty=T.IMPOSSIBILITY})
             end
 
           (* let expression *)
