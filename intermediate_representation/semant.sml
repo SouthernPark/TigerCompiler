@@ -85,7 +85,7 @@ struct
   fun transExp(venv, tenv, loop_end_label:(Temp.label option), level:Tr.level) =
       let fun trexp (A.NilExp) = {exp=Tr.transNIL(), ty=T.NIL}
           | trexp (A.IntExp(int)) = {exp=Tr.transINT(int), ty=T.INT}
-          | trexp (A.StringExp(string)) = {exp=Tr.TODO, ty=T.STRING}
+          | trexp (A.StringExp(string, pos)) = {exp=Tr.transSTRING(string), ty=T.STRING}
           | trexp (A.VarExp(var)) = trvar var
           | trexp (A.OpExp{left, oper, right, pos}) =
             let val {exp=left_exp, ty=left_ty} = trexp left

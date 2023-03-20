@@ -16,6 +16,7 @@ sig
   val allocLocal: level -> bool -> access
   val transNIL : unit -> exp
   val transINT : int -> exp
+  val transSTRING : string -> exp				  
   val transBINOP : exp * exp * Absyn.oper -> exp
   val transIF : exp * exp * exp -> exp
   val transRECORD : exp list -> exp
@@ -116,7 +117,20 @@ fun transNIL () = Ex(T.CONST 0)
 fun transINT (x) = Ex(T.CONST x)
 
 (* string exp *)
-(* fun transSTRING (string) =  *)
+fun transSTRING (str) =
+    let fun isString (F.PROC _) = false
+	  | isString (F.STRING (l,s)) = str = s
+	val checkFragres = List.find(isString) (!fraglist)
+    in
+	case checkFragres of
+	    SOME(F.STRING(l,s)) => Ex(T.NAME l)
+	  | _ => let val newLabel = Temp.newlabel ()
+	             val newString = F.STRING(newLabel, str)
+ 		 in
+		     fraglist := (newString)::(!fraglist);
+		     Ex(T.NAME newLabel)
+		 end		    
+    end			     					   					      
 
 (* math operators *)
 fun transBINOP (left, right, oper) =
