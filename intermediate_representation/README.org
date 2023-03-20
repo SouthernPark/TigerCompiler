@@ -38,10 +38,10 @@ The reason I do this, is to pass compiler error when other trans func is not fin
 | GtOp         | yes        |        |
 | GeOp         | yes        |        |
 | BreakExp     | yes        |        |
-| RecordExp    | no         |        |
+| RecordExp    | yes        |        |
 | WhileExp     | no         |        |
 | ForExp       | no         |        |
-| ArrayExp     | no         |        |
+| ArrayExp     | yes        |        |
 | SimpleVar    | no         |        |
 | FieldVar     | no         |        |
 | SubscriptVar | no         |        |
@@ -49,8 +49,8 @@ The reason I do this, is to pass compiler error when other trans func is not fin
 | StringExp    | no         |        |
 | CallExp      | no         |        |
 | SeqExp       | no         |        |
-| AssignExp    | no         |        |
-| IfExp        | no         |        |
+| AssignExp    | yes        |        |
+| IfExp        | yes        |        |
 | TypeDec      | no         |        |
 | NameTy       | no         |        |
 | RecordTy     | no         |        |
@@ -73,6 +73,8 @@ The reason I do this, is to pass compiler error when other trans func is not fin
   - if there are type error in args, we pass as all correct args before the error args
 + how we handle break error:
   - if the break lead to an error, we will pass a arbitrary loop end Label to transBreak func
++ how we handle exp when there's error in type checking:
+  - For those having error type checking, we will return ERROREXP for exp. It's defined in translate.sml, which is a int 0 exp.
 
 * Requirements
 

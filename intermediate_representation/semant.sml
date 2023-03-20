@@ -115,17 +115,17 @@ struct
                 val () = if isSubTy(actual_ty then_ty, T.UNIT) then ()
                          else error pos' (T.name(actual_ty then_ty) ^ " is not a subtype of UNIT.")
             in
-              {exp=Tr.TODO, ty=T.UNIT} (* if expression with no else, returns no value *)
+              {exp=Tr.transINT(0), ty=T.UNIT} (* if expression with no else, returns no value *)
             end
           | trexp (A.IfExp({test=test_exp, then'=then_exp, else'=SOME(else_exp), pos=pos'})) =
-            let val {exp=_, ty=test_ty} = trexp(test_exp)
+            let val {exp=test_exp', ty=test_ty} = trexp(test_exp)
                 val () = if isSubTy(actual_ty test_ty, T.INT) then ()
                          else error pos' ("If condition: type " ^ (T.name (actual_ty test_ty)) ^ " is not a subtype of INT")
-                val {exp=_, ty=then_ty} = trexp(then_exp)
-                val {exp=_, ty=else_ty} = trexp(else_exp)
+                val {exp=then_exp', ty=then_ty} = trexp(then_exp)
+                val {exp=else_exp', ty=else_ty} = trexp(else_exp)
                 val rt = actual_ty(leastUpperBound(actual_ty then_ty, actual_ty else_ty))
             in
-              {exp=Tr.TODO, ty=rt}
+              {exp=Tr.transIF(test_exp', then_exp', else_exp'), ty=rt}
             end
           (* Record *)
           | trexp (A.RecordExp({fields, typ, pos})) = (
@@ -133,7 +133,7 @@ struct
               case actual_ty record_ty of T.RECORD(results, unique) => (
                 let
                     fun checkFieldTy([], []) = ()
-		      | checkFieldTy(expfiles, []) = error pos "Extra fields for the record"
+		      | checkFieldTy(fields, []) = error pos "Extra fields for the record"
 		      | checkFieldTy([], results) = error pos "Lack fileds for the record"
                       | checkFieldTy(expfield::l1, result::l2) =
                     let
@@ -150,30 +150,39 @@ struct
                       checkType(exp, name_ty);
                       checkFieldTy(l1, l2)
                     end
+                    fun getExps([], explist) = explist
+                      | getExps((field::l), explist) =
+                          let
+                            val (sym, exp, pos) = field
+                          in
+                            getExps(l, explist@[#exp(trexp exp)])
+                          end
+                    val exps = getExps(fields, [])
                 in
                   if List.length(fields) = List.length(results)
-                  then (checkFieldTy(fields, results); {exp=Tr.TODO, ty=T.RECORD(results, unique)})
-                  else (error pos ("Record fields lengths don't match."); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
+                  then (checkFieldTy(fields, results); {exp=Tr.transRECORD(exps), ty=T.RECORD(results, unique)})
+                  else (error pos ("Record fields lengths don't match."); {exp=Tr.ERROREXP, ty=T.IMPOSSIBILITY})
                 end
               )
-              | _ => (error pos ("Record type is undefined."); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
+              | _ => (error pos ("Record type is undefined."); {exp=Tr.ERROREXP, ty=T.IMPOSSIBILITY})
             )
-            | _ => (error pos ("Record type is undefined."); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
+            | _ => (error pos ("Record type is undefined."); {exp=Tr.ERROREXP, ty=T.IMPOSSIBILITY})
           )
           (* Array *)
           | trexp (A.ArrayExp({typ, size, init, pos})) =
             let val {exp=size_val, ty=size_ty} = trexp size
+                val {exp=init_val, ty=init_ty} = trexp init
                 val () = checkInt(size_ty, pos);
             in
 
               case S.look(tenv, typ) of SOME(array_ty) => (
                  case actual_ty array_ty of T.ARRAY(name_ty, unique) => (
-                    if isSubTy(actual_ty(#ty(trexp init)), actual_ty name_ty) then ({exp=Tr.TODO, ty=T.ARRAY(actual_ty name_ty, unique)})
-                    else (error pos ("Array types don't match."); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
+                    if isSubTy(actual_ty init_ty, actual_ty name_ty) then ({exp=Tr.transARRAY(size_val, init_val), ty=T.ARRAY(actual_ty name_ty, unique)})
+                    else (error pos ("Array types don't match."); {exp=Tr.ERROREXP, ty=T.IMPOSSIBILITY})
                   )
-                                          | _ => (error pos ("Array type is undefined."); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
+                                          | _ => (error pos ("Array type is undefined."); {exp=Tr.ERROREXP, ty=T.IMPOSSIBILITY})
                )
-                                      | _ => (error pos ("Array type is undefined."); {exp=Tr.TODO, ty=T.IMPOSSIBILITY})
+                                      | _ => (error pos ("Array type is undefined."); {exp=Tr.ERROREXP, ty=T.IMPOSSIBILITY})
             end
           (*Assign*)
           | trexp (A.AssignExp{var, exp, pos}) =
@@ -181,8 +190,8 @@ struct
                 val {ty=exptype, exp=expVal} = trexp exp
             in
               (*check if the type of exp is a subtype of var*)
-              if isSubTy(actual_ty exptype, actual_ty vartype) then ({exp=Tr.TODO, ty=T.UNIT})
-              else (error pos "assignment type mismatch"; {exp=Tr.TODO, ty=T.UNIT})
+              if isSubTy(actual_ty exptype, actual_ty vartype) then ({exp=Tr.transASSIGN(varMem, expVal), ty=T.UNIT})
+              else (error pos "assignment type mismatch"; {exp=Tr.ERROREXP, ty=T.UNIT})
             end
           (* call exp *)
           | trexp (A.CallExp{func=func_name, args=exp_lst, pos=pos'}) =
