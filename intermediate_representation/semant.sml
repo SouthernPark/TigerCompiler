@@ -227,13 +227,14 @@ struct
               {exp=Tr.transLET(exps', body_exp), ty=body_ty}
             end
           | trexp (A.SeqExp(explst)) =
-            let 
-              val last_exp_ty = T.UNIT
-              fun checkExprLst ([], exps) = exps
-                | checkExprLst ([(exp, pos)], exps) = (last_exp_ty=(#ty(trexp exp)); checkExprLst([], exps@[(#exp(trexp exp))]))
-                | checkExprLst ((exp, pos)::l, exps) = (checkExprLst(l, exps@[(#exp(trexp exp))]))
+            let
+              fun checkExprLst ([], exps) = (T.UNIT, exps)
+                | checkExprLst ([(exp, pos)], exps) = let val {exp, ty} = trexp exp in (ty, exp::exps) end
+                | checkExprLst ((exp, pos)::l, exps) = let val {exp, ty} = trexp exp in checkExprLst(l, exp::exps)end
+              val (last_exp_ty, seq_exp_rev) = checkExprLst(explst, [])
+
             in
-              {exp=Tr.transSEQ(checkExprLst(explst, [])), ty=last_exp_ty}
+              {exp=Tr.transSEQ(rev seq_exp_rev), ty=last_exp_ty}
             end
 	  | trexp (A.ForExp{var, escape, lo, hi, body, pos}) =
 	    let
@@ -411,7 +412,7 @@ struct
                       val proc_entry_exit = Tr.procEntryExit({level=func_level, body=body_exp})
                     in
                       if isSubTy(actual_ty body_rt, actual_ty rt) then ()
-                      else error pos' ("Function return: type "^ (T.name(actual_ty body_rt)) ^ " is not a subtype of type " ^ (T.name(actual_ty rt)))
+                      else error pos' ("Function " ^ (S.name name')  ^" return: type "^ (T.name(actual_ty body_rt)) ^ " is not a subtype of type " ^ (T.name(actual_ty rt)))
                     end
                 fun detectDuplicateNames([], funlist) = ()
                   | detectDuplicateNames(cur_fundec::l, funlist) =

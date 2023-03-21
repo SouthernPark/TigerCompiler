@@ -16,7 +16,7 @@ sig
   val allocLocal: level -> bool -> access
   val transNIL : unit -> exp
   val transINT : int -> exp
-  val transSTRING : string -> exp				  
+  val transSTRING : string -> exp
   val transBINOP : exp * exp * Absyn.oper -> exp
   val transRELOP : (exp  * exp * Absyn.oper * Types.ty) -> exp				      
   val transIF : exp * exp * exp -> exp
@@ -132,8 +132,8 @@ fun transSTRING (str) =
  		 in
 		     fraglist := (newString)::(!fraglist);
 		     Ex(T.NAME newLabel)
-		 end		    
-    end			     					   					      
+		 end
+    end
 
 (* math operators *)
 fun transBINOP (left, right, oper) =
@@ -267,7 +267,7 @@ fun transCall(arg_exps, _, TOP, calleeLabel) = Ex(T.CALL(T.NAME calleeLabel, (ma
     end
 
 (* simple var *)
-fun transSIMPLEVAR ((varLevel, F.InReg(temp):F.access):access, funLevel) = Ex(T.MEM(T.TEMP(temp)))
+fun transSIMPLEVAR ((varLevel, F.InReg(temp):F.access):access, funLevel) = Ex(F.exp (F.InReg(temp)) (T.TEMP(F.FP)))
   | transSIMPLEVAR ((varLevel, F.InFrame(offset)):access, funLevel) =
     let val Level({parent=funcParent, frame=funFrame}, _) = funLevel
         val Level({parent=varParent, frame=varFrame}, _) = varLevel
