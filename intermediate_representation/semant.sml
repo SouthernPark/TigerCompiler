@@ -88,8 +88,8 @@ struct
             let val {exp=left_exp, ty=left_ty} = trexp left
                 val {exp=right_exp, ty=right_ty} = trexp right
                 fun math_operator() = (checkInt(left_ty, pos); checkInt(right_ty, pos); {exp=Tr.transBINOP(left_exp, right_exp, oper), ty=T.INT})
-                fun compare_operator() = (checkSameType(left_ty, right_ty, pos); {exp=Tr.transBINOP(left_exp, right_exp, oper), ty=T.INT})
-                fun eq_operator() = (checkEqual(left_ty, right_ty, pos); {exp=Tr.transBINOP(left_exp, right_exp, oper), ty=T.INT})
+                fun compare_operator() = (checkSameType(left_ty, right_ty, pos); {exp=Tr.transRELOP(left_exp, right_exp, oper, left_ty), ty=T.INT})
+                fun eq_operator() = (checkEqual(left_ty, right_ty, pos); {exp=Tr.transRELOP(left_exp, right_exp, oper, left_ty), ty=T.INT})
             in
               case oper of A.PlusOp => math_operator()
                          | A.MinusOp => math_operator()
@@ -389,7 +389,7 @@ struct
                 fun parseBody ({name=name', params=params', result=result', body=body', pos=pos'}:A.fundec) =
                     let
                       val {level=func_level, label=_, formals=_, result=rt} =
-                          case S.look(venv, name') of
+                          case S.look(venv', name') of
                               SOME(E.FunEntry(r)) => r
                             | _ => (error pos' ("Function: " ^ (S.name name') ^ " does not exist."); raise ErrorMsg.Error)
 

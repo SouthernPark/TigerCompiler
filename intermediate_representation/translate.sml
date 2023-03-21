@@ -18,6 +18,7 @@ sig
   val transINT : int -> exp
   val transSTRING : string -> exp				  
   val transBINOP : exp * exp * Absyn.oper -> exp
+  val transRELOP : (exp  * exp * Absyn.oper * Types.ty) -> exp				      
   val transIF : exp * exp * exp -> exp
   val transRECORD : exp list -> exp
   val transARRAY : exp * exp -> exp
@@ -244,7 +245,8 @@ fun isEqualLevel (TOP, TOP) = true
 (* return tree exp to get static link in the frame *)
 fun getSLFromFrame(access, fp_exp) = F.exp access fp_exp
 
-fun transCall(arg_exps, callerLevel, calleeLevel, calleeLabel) =
+fun transCall(arg_exps, _, TOP, calleeLabel) = Ex(T.CALL(T.NAME calleeLabel, (map unEx arg_exps)))
+  | transCall(arg_exps, callerLevel, calleeLevel, calleeLabel) =    
     let
       fun findStaticLink(callerLevel:level, calleeLevel:level, fp:T.exp) =
           let val Level({parent=callerParent, frame=callerFrame}, _) = callerLevel
