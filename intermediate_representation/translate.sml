@@ -7,7 +7,7 @@ sig
   datatype exp = Ex of Tree.exp
                 |Nx of Tree.stm
                 |Cx of Temp.label * Temp.label -> Tree.stm
-                |TODO
+
   type frag
 
   val outermost : level
@@ -18,7 +18,7 @@ sig
   val transINT : int -> exp
   val transSTRING : string -> exp
   val transBINOP : exp * exp * Absyn.oper -> exp
-  val transRELOP : (exp  * exp * Absyn.oper * Types.ty) -> exp				      
+  val transRELOP : (exp  * exp * Absyn.oper * Types.ty) -> exp
   val transIF : exp * exp * exp -> exp
   val transRECORD : exp list -> exp
   val transARRAY : exp * exp -> exp
@@ -49,7 +49,6 @@ structure A = Absyn
 datatype exp = Ex of T.exp
 	      |Nx of T.stm
               |Cx of Temp.label * Temp.label -> T.stm
-              |TODO
 
 
 datatype level = TOP | Level of {parent: level, frame:F.frame } * unit ref
@@ -246,7 +245,7 @@ fun isEqualLevel (TOP, TOP) = true
 fun getSLFromFrame(access, fp_exp) = F.exp access fp_exp
 
 fun transCall(arg_exps, _, TOP, calleeLabel) = Ex(T.CALL(T.NAME calleeLabel, (map unEx arg_exps)))
-  | transCall(arg_exps, callerLevel, calleeLevel, calleeLabel) =    
+  | transCall(arg_exps, callerLevel, calleeLevel, calleeLabel) =
     let
       fun findStaticLink(callerLevel:level, calleeLevel:level, fp:T.exp) =
           let val Level({parent=callerParent, frame=callerFrame}, _) = callerLevel

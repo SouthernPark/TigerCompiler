@@ -468,8 +468,6 @@ struct
         frags
       end
 
-  (* NONE -> initially no loop *)
-
 end
 
 
