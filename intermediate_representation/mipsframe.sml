@@ -4,8 +4,8 @@ datatype access = InFrame of int | InReg of Temp.temp
 type frame = {name: Temp.label, formals : access list, numLocalVars : int ref, curOffSet : int ref}
 val FP = Temp.newtemp()
 
-datatype frag = PROC of {body : Tree.stm, frame : frame}
-             |  STRING of Temp.label * string
+datatype frag = PROC of {body : Tree.stm,  frame : frame}
+              | STRING of Temp.label * string
 val RV = Temp.newtemp()
 
 val wordsize = 4

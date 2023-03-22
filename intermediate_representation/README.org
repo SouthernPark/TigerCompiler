@@ -4,78 +4,23 @@
 
 FRAME + Intermediate representation
 
-* TODO Imporant Imporant Imporant
-remove the following in signature of translate.sml
-#+BEGIN_SRC
-datatype exp = Ex of T.exp
-              |Nx of T.stm
-              |Cx of Temp.label * Temp.label -> T.stm
-              |TODO
-#+END_SRC
-
-and place with:
-#+BEGIN_SRC
-type exp
-#+END_SRC
-
-also, in the structure remove /TODO/
-
-The reason I do this, is to pass compiler error when other trans func is not finished
-
-
-* check_list
-| name         | translated | tested |
-| NilExp       | yes        |        |
-| IntExp       | yes        |        |
-| PlusOp       | yes        |        |
-| MinusOp      | yes        |        |
-| TimesOp      | yes        |        |
-| DivideOp     | yes        |        |
-| EqOp         | yes        |        |
-| NeqOp        | yes        |        |
-| LtOp         | yes        |        |
-| LeOp         | yes        |        |
-| GtOp         | yes        |        |
-| GeOp         | yes        |        |
-| BreakExp     | yes        |        |
-| RecordExp    | yes        |        |
-| WhileExp     | yes        |        |
-| ForExp       | yes        |        |
-| LetExp       | yes        |        |
-| ArrayExp     | yes        |        |
-| SimpleVar    | yes        |        |
-| FieldVar     | yes        |        |
-| SubscriptVar | yes        |        |
-| VarExp       | yes        |        |
-| StringExp    | yes        |        |
-| CallExp      | yes        |        |
-| SeqExp       | yes        |        |
-| AssignExp    | yes        |        |
-| IfExp        | yes        |        |
-| TypeDec      | yes        |        |
-| NameTy       | no         |        |
-| RecordTy     | no         |        |
-| ArrayTy      | no         |        |
-| base type    | no         |        |
-| base func    | no         |        |
-
-
-
 * Grader to read
 + for some error cases in translate, we will return a simple exp /Translate.Ex(Tree.CONST(0))/ instead of raise error
 + we currently set all variables as escaping
 + we changed the breakexp type to BOTTOM/IMPOSSIBILITY (in semant.sml) to keep consistent with our type system
 + we change the exit type to BOTTOM/IMPOSSIBILITY (in env.sml) to keep consistent  with type system
-+ if the compiler can not find func name in CallExp, then we will raise error. (/raise ErrorMsg.Error/)
++ if the compiler can not find func name in Fundec, then we will raise error. (/raise ErrorMsg.Error/)
+  - This case will not happen, because we always put the signature of a func into venv, then find it in venv
 + how we handle error cases in func call:
-  - if the caller does not provide enough args to callee, then we use as many as possible
-  - if the caller provide too many args, we just use the first k args, where k is equal to arg length of callee
-  - if the callee func name does not exist, then we raise an ErrorMsg.Error
-  - if there are type error in args, we pass as all correct args before the error args
+  - if the caller does not provide enough args to callee, then print error msg and use as many as possible
+  - if the caller provide too many args, we print error msg abd just use the first k args, where k is equal to arg length of callee
+  - if the callee func name does not exist, then we print error msg  return very simple exp like /Translate.Ex(Tree.CONST(0))/
+  - if there are type error in args, we print error msg and pass as all correct args before the error args
 + how we handle break error:
-  - if the break lead to an error, we will pass a arbitrary loop end Label to transBreak func
+  - if the break lead to an error, we print error msg and pass a arbitrary loop end Label to transBreak func
 + how we handle exp when there's error in type checking:
-  - For those having error type checking, we will return ERROREXP for exp. It's defined in translate.sml, which is a int 0 exp.
+  - For those having error type checking, we will return ERROREXP (like: CONST 0) for exp.
++ for the prologue and epilogue of fundec, we will implement it in later phase.
 
 * Requirements
 
