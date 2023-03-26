@@ -1,0 +1,20 @@
+#+TITLE Semantic Analysis
+#+DATE <2023-03-26 Sun>
+#+TODO: TODO INPROCESS UNSURE DONE
+
+Canonize + instruction selection
+
+* new file added
+
+| name          | description                                         |
+| canon.sml     | provided by the book, used to canonize our IR tree  |
+| assem.sml     | provided by the book, abstract assembly instruction |
+| flowgraph.sml | provided by the book, not know                      |
+| graph.sig     | provided by the book, signature for graph structure |
+| graph.sml     | provided by the book,                               |
+| main.sml      | provided by the book, compile and emit assembly     |
+| runtime.c     | provided by the bokk, library functions             |
+
+
+
+
