@@ -10,7 +10,7 @@ val RV = Temp.newtemp()
 
 val wordsize = 4
 val numArgRegisters = 4 (*MIPS has 4 registers for argument*)
-fun name {name=name,formals= _,numLocalVars=_,curOffSet=_} = name
+fun name {name=name,formals= _,numLocalVars=_,curOffSet=_} = Symbol.name name
 fun formals {name=_, formals=formals,numLocalVars=_, curOffSet=_} = formals
 fun newFrame {name, formals} =
     let val curInRegFormals = ref 0
@@ -35,6 +35,8 @@ fun externalCall (s, args) = Tree.CALL(Tree.NAME(Temp.namedlabel s), args)
 fun exp access fp_exp =
     case access of InReg(tmp) => Tree.TEMP tmp
                  | InFrame(offset) => Tree.MEM(Tree.BINOP(Tree.PLUS, fp_exp, Tree.CONST(offset)))
+
+fun string(l:Temp.label, s:string) = Symbol.name(l) ^ ": .asciiz " ^ s
 
 end
 
