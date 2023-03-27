@@ -20,6 +20,9 @@ tree.sml
 temp.sig
 temp.sml
 printtree.sml
+canon.sml
+assem.sml
+mipsgen.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/basis.cm

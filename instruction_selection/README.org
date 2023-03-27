@@ -14,6 +14,32 @@ Canonize + instruction selection
 | graph.sml     | provided by the book,                               |
 | main.sml      | provided by the book, compile and emit assembly     |
 | runtime.c     | provided by the bokk, library functions             |
+| mipsgen.sml   | need to implement "Maximal Munch" algorithm         |
+
+
+* todo
+
+** implement maximal munch in mipsgen.sml
+
+** implement FindEscape
+optional requirement in instruction selection phase
+
+* Issue
+
+** TODO arguments passing in Call exp
+Currently, we set the escaping of all args as true. Therefore, all the args will not be stored in the regs but in the frame.
+
+For the munchArgs described in page 204, which generate code to move args to correct position and returns a list of temps that are to be passed machine's call exp, what should we return if all the args are in the frame. (It also says, we need these for later liveness analysis)
+
+** string in assembly
+Below is an example of string in MIPS assembly:
+#+BEGIN_SRC
+.data
+myString: .asciiz "Hello, world!"
+#+END_SRC
+
+.asciiz directive, which tells the assembler to allocate space for the string and add a null terminator at the end
+
 
 
 

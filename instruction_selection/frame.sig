@@ -10,9 +10,11 @@ sig type frame
 
     val wordsize : int
     val newFrame : {name: Temp.label, formals: bool list} -> frame
-    val name : frame -> Temp.label
+    val name : frame -> string
     val formals : frame -> access list
     val allocLocal : frame -> bool -> access
     val externalCall : string * Tree.exp list -> Tree.exp
+    (* output of string is used in data segment assembly, diff ISA has diff def, that's why we put it here *)
+    val string: Temp.label * string -> string
 end
 
