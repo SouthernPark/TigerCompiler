@@ -37,7 +37,7 @@ Seems mips has left logical shift but not left arithmetic shift.
 
 Mips has both right logical shift and right arithmetic shift
 
-
+#+BEGIN_SRC
 +----------------+--------------+------------------------------+-------------+-----------+
 | name           | effect       |trees                         | notes       |# of nodes |
 +----------------+--------------+------------------------------+-------------+-----------+
@@ -163,6 +163,8 @@ Mips has both right logical shift and right arithmetic shift
 |                |$d = ($t1     |                              |operand      |           |
 |                |^ 1)          |                              |             |           |
 +----------------+--------------+------------------------------+-------------+-----------+
+#+END_SRC
+
 
 * todo
 
