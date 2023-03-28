@@ -10,9 +10,9 @@ fun getsome (SOME x) = x
 (* val it = fn : TextIO.outstream -> MipsFrame.frag -> unit *)
 fun emitproc out (F.PROC{body,frame}) =
     let val _ = print ("emit " ^ F.name frame ^ "\n")
-        (*         val _ = Printtree.printtree(out,body); *)
+        (* val _ = Printtree.printtree(out,body); *)
 	val stms = Canon.linearize body
-        (*         val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
+        (* val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
         val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
 	val instrs =   List.concat(map (G.codegen frame) stms')
         val format0 = Assem.format(Temp.makestring)
