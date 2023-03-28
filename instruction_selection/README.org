@@ -37,6 +37,7 @@ Seems mips has left logical shift but not left arithmetic shift.
 
 Mips has both right logical shift and right arithmetic shift
 
+Note, that although we use $t below, the code in assem.sml only handle /s, d, j/ regs, so t will be written as "s1"
 #+BEGIN_SRC
 +----------------+--------------+------------------------------+-------------+-----------+
 | name           | effect       |trees                         | notes       |# of nodes |
@@ -142,6 +143,14 @@ Mips has both right logical shift and right arithmetic shift
 |                |              |   +       +     i            |             |           |
 |                |              |  / \     / \                 |             |           |
 |                |              |  i         i                 |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|move $d, $s     |$d = $s       |  move                        |reg to reg   | 1         |
+|                |              |   / \                        |move         |           |
+|                |              |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|li $d, i        |$d = i        |  const                       |const to reg | 1         |
+|                |              |                              |move         |           |
+|                |              |                              |             |           |
 +----------------+--------------+------------------------------+-------------+-----------+
 |slt $d, $s, $t  |$d = ($s < $t)|   <                          |PS: need to  | 1         |
 |                |              |  / \                         |reverse      |           |

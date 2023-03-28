@@ -36,6 +36,11 @@ fun compile filename =
 	           (fn out => (app (emitproc out) frags))
     end
 
+fun compilePrint filename = let val frag_lst = Semant.transProg (Parse.parse filename)
+                            in
+                              Printtree.printProg frag_lst
+                            end
+
 end
 
 

@@ -1,0 +1,10 @@
+let
+	 function readint(a:int, b:int, c:int, d:int, f:int) =
+	 	  let var j := 123
+		  in
+			j
+		  end
+
+in
+readint(1,2,3,4,5)
+end
