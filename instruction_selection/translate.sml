@@ -271,12 +271,12 @@ fun transSIMPLEVAR ((varLevel, F.InReg(temp):F.access):access, funLevel) = Ex(F.
     let val Level({parent=funcParent, frame=funFrame}, _) = funLevel
         val Level({parent=varParent, frame=varFrame}, _) = varLevel
         fun findStaticLink(funcLevel, varLevel, fp) =
-            if isEqualLevel(funcLevel, varLevel) then fp
+            if isEqualLevel(funcLevel, varLevel) then (fp)
             (*var level has a higher level*)
             else let val deref_fp = getSLFromFrame((hd (F.formals funFrame)) ,fp) in findStaticLink(funcParent, varLevel, deref_fp) end
         val sl = findStaticLink(funLevel, varLevel, T.TEMP(F.FP))
     in
-      Ex(T.MEM(F.exp (F.InFrame(offset)) sl))
+      Ex(F.exp (F.InFrame(offset)) sl)
     end
 
 
