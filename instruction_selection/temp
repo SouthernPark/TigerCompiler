@@ -1,8 +1,9 @@
 let
 	 function readint(a:int, b:int, c:int, d:int, f:int) =
 	 	  let var j := 123
+		      function f() = j + 1
 		  in
-			j
+			f()
 		  end
 
 in
