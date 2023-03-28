@@ -7,6 +7,7 @@ structure G = MipsGen
 
 fun getsome (SOME x) = x
 
+(* val it = fn : TextIO.outstream -> MipsFrame.frag -> unit *)
 fun emitproc out (F.PROC{body,frame}) =
     let val _ = print ("emit " ^ F.name frame ^ "\n")
         (*         val _ = Printtree.printtree(out,body); *)

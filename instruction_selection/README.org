@@ -4,6 +4,10 @@
 
 Canonize + instruction selection
 
+* grader read
++ MIPS doesn't have subi, we can achieve the same effect as a subtraction by using the /addi/ or we could move the const to a reg and use /sub/. Here, we choose the second solution.
+
+
 * new file added
 
 | name          | description                                         |
@@ -15,6 +19,52 @@ Canonize + instruction selection
 | main.sml      | provided by the book, compile and emit assembly     |
 | runtime.c     | provided by the bokk, library functions             |
 | mipsgen.sml   | need to implement "Maximal Munch" algorithm         |
+
+
+* MIPS
+
+[[https://uweb.engr.arizona.edu/~ece369/Resources/spim/MIPSReference.pdf][mips instruction]]
+
+Mips does not have a memory-to-memory move instruction. In MIPS, data transfer between memory locations must be done using a register as an intermediate.
+
+MIPS /mult $s, $t/, This instruction multiplies the signed integers in registers $s and $t, and stores the 64-bit result in registers $HI and $LO.
+
+MIPS doesn't have subi, we can achieve the same effect as a subtraction by using the /addi/ or we could move the const to a reg and use /sub/. Here, we choose the second solution.
+
+
++----------------+--------------+---------------------------+-------------+-----------+
+| name           | effect       |trees                      | notes       |# of nodes |
++----------------+--------------+---------------------------+-------------+-----------+
+| add $d, $s, $t | $d = $s + $t |  +                        |signed       | 1         |
+|                |              | / \                       |arithmatics  |           |
+|                |              |                           |             |           |
++----------------+--------------+---------------------------+-------------+-----------+
+|sub $d, $s, $t  | $d = $s - $t |  -                        |signed       | 1         |
+|                |              | / \                       |             |           |
+|                |              |                           |             |           |
++----------------+--------------+---------------------------+-------------+-----------+
+|mult $s, $t     |hi:lo = $s *  |  *                        |may need to  | 1         |
+|                |$t            | / \                       |move value in|           |
+|                |              |                           |low reg      |           |
++----------------+--------------+---------------------------+-------------+-----------+
+|div $s, $t      |lo = $s / $t  |  /                        |may need to  | 1         |
+|                |hi = $s % $t  | / \                       |mvoe value in|           |
+|                |              |                           |low reg      |           |
++----------------+--------------+---------------------------+-------------+-----------+
+|addi $t, $s, i  |$t = $s +     |                           |c means      | 1 or 2    |
+|                |SE(i)         |   +     +     c           |cosnt, mips  |           |
+|                |              |  / \   / \                |does not have|           |
+|                |              | c         c               |subi, we use |           |
+|                |              |                           |addi         |           |
++----------------+--------------+---------------------------+-------------+-----------+
+|                |              |                           |             |           |
+|                |              |                           |             |           |
+|                |              |                           |             |           |
+|                |              |                           |             |           |
++----------------+--------------+---------------------------+-------------+-----------+
+
+
+
 
 
 * todo
