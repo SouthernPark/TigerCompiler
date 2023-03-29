@@ -112,7 +112,6 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
                   }))
           (* addi *)
           | munchExp (T.BINOP(T.PLUS, T.TEMP t, T.CONST i)) = (* # of nodes 2 *)
-          | munchExp (T.BINOP(PLUS, T.TEMP t, T.CONST i)) = (* # of nodes 2 *)
             result(fn r => emit(A.OPER{
                                    assem = "addi `d0, `s0, " ^ intToString(i) ^ "\n",
                                    src = [t], dst = [r], jump = NONE
