@@ -15,6 +15,13 @@ munchExp: Tree.exp -> Temp.temp
 munchStm: Tree.stm -> unit
 *)
 
+fun intToString (n:int) : string =
+    let val str = Int.toString(n)
+    in
+      if String.sub(str, 0) = #"~" then "-" ^ String.extract(str, 1, SOME(size str - 1))
+      else str
+    end
+
 (* TODO: below is a fake implementation of maximal munch *)
 fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
     let val ilist = ref (nil: A.instr list)
@@ -25,7 +32,7 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
                                          | T.MINUS => "sub"
                                          | T.MUL => "mul"
                                          | T.DIV => "div"
-        
+
         fun relopIns (oper) = case oper of T.EQ => "beq"
                                          | T.NE => "bne"
                                          | T.LT => "blt"
@@ -38,20 +45,20 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
           (* sw *)
           | munchStm (T.MOVE(T.MEM(T.BINOP(T.PLUS, e1, T.CONST i)), e2)) = (* # of nodes 4 *)
             emit(A.OPER{
-                    assem = "sw `s0, " ^ Int.toString(i) ^ "(`s1)\n",
+                    assem = "sw `s0, " ^ intToString(i) ^ "(`s1)\n",
                     src = [munchExp e2, munchExp e1],
                     dst = [], jump = NONE
                 })
           | munchStm (T.MOVE(T.MEM(T.BINOP(T.PLUS, T.CONST i, e1)), e2)) = (* # of nodes 4 *)
             emit(A.OPER{
-                    assem = "sw `s0, " ^ Int.toString(i) ^ "(`s1)\n",
+                    assem = "sw `s0, " ^ intToString(i) ^ "(`s1)\n",
                     src = [munchExp e2, munchExp e1],
                     dst = [], jump = NONE
                 })
           | munchStm(T.MOVE(T.MEM(T.CONST i), e2)) = (* # of nodes 3 *)
             emit(A.OPER{
-                    assem = "sw `s0, " ^ Int.toString(i) ^ "($zero)\n",
-                    src=[munchExp e2], 
+                    assem = "sw `s0, " ^ intToString(i) ^ "($zero)\n",
+                    src=[munchExp e2],
                     dst=[],jump=NONE
                 })
           | munchStm (T.MOVE(T.MEM(e1), e2)) = (* # of nodes 2 *)
@@ -63,7 +70,7 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
           (* move const to reg *)
           | munchStm (T.MOVE(T.TEMP t, T.CONST i)) = (* # of nodes 1 *)
             emit(A.OPER{
-                    assem = "li `d0, " ^ Int.toString(i) ^ "\n",
+                    assem = "li `d0, " ^ intToString(i) ^ "\n",
                     src = [],
                     dst = [t], jump = NONE
                 })
@@ -95,28 +102,28 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
           (* lw *)
           | munchExp (T.MEM(T.BINOP(T.PLUS, T.CONST i, e2))) = (* # of nodes 3 *)
             result(fn r => emit(A.OPER{
-                                   assem = "lw `d0, " ^ Int.toString(i) ^ "(`s0)\n",
+                                   assem = "lw `d0, " ^ intToString(i) ^ "(`s0)\n",
                                    src = [munchExp e2], dst = [r], jump = NONE
                   }))
           | munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) = (* # of nodes 3 *)
             result(fn r => emit(A.OPER{
-                                   assem = "lw `d0, " ^ Int.toString(i) ^ "(`s0)\n",
+                                   assem = "lw `d0, " ^ intToString(i) ^ "(`s0)\n",
                                    src = [munchExp e1], dst = [r], jump = NONE
                   }))
           (* addi *)
           | munchExp (T.BINOP(T.PLUS, T.TEMP t, T.CONST i)) = (* # of nodes 2 *)
             result(fn r => emit(A.OPER{
-                                   assem = "addi `d0, `s0, " ^ Int.toString(i) ^ "\n",
+                                   assem = "addi `d0, `s0, " ^ intToString(i) ^ "\n",
                                    src = [t], dst = [r], jump = NONE
                   }))
           | munchExp (T.BINOP(T.PLUS, e1, T.CONST i)) = (* # of nodes 2 *)
             result(fn r => emit(A.OPER{
-                                   assem = "addi `d0, `s0, " ^ Int.toString(i) ^ "\n",
+                                   assem = "addi `d0, `s0, " ^ intToString(i) ^ "\n",
                                    src = [munchExp e1], dst = [r], jump = NONE
                   }))
           | munchExp (T.BINOP(T.PLUS, T.CONST i, e2)) = (* # of nodes 2 *)
             result(fn r => emit(A.OPER{
-                                   assem = "addi `d0, `s0, " ^ Int.toString(i) ^ "\n",
+                                   assem = "addi `d0, `s0, " ^ intToString(i) ^ "\n",
                                    src = [munchExp e2], dst = [r], jump = NONE
                   }))
           (* binop *)
@@ -128,7 +135,7 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
           (* const *)
           | munchExp (T.CONST i) = (* # of nodes 1 *)
             result(fn r => emit(A.OPER{
-                                   assem = "li `d0, " ^ Int.toString(i) ^ "\n",
+                                   assem = "li `d0, " ^ intToString(i) ^ "\n",
                                    src = [], dst = [r], jump = NONE
                   }))
           (* lw *)
@@ -140,7 +147,7 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
           (* temp *)
           | munchExp (T.TEMP t) = t
           (* name *)
-          | munchExp (T.NAME lab) = 
+          | munchExp (T.NAME lab) =
             result(fn r => emit(A.OPER{
                                     assem = "la `d0, " ^ Symbol.name(lab) ^ "\n",
                                     src = [], dst = [r], jump = NONE
@@ -173,13 +180,12 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
               val arg_temp = T.TEMP((List.nth(Frame.args_reg, index)))
               val move_sp_stm = T.MOVE(T.MEM(T.BINOP(T.PLUS, T.TEMP(Frame.SP), T.CONST(((index - 3) * 4)))), curr_arg)
             in
-              if index < 4 
+              if index < 4
               (* use a0-a4 regs *)
               then (munchStm(move_arg_stm); [munchExp arg_temp] @ munchArgs(index + 1, args))
               (* extra on stack *)
               else (munchStm(move_sp_stm); munchArgs(index + 1, args))
             end
-            
     in
       munchStm stm;
       rev(!ilist)

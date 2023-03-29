@@ -267,7 +267,7 @@ struct
                                               | SOME(l) => l
             in {exp=Tr.transBREAK(break_end_label), ty=T.IMPOSSIBILITY} end
 
-        and trvar (A.SimpleVar(id,pos)) = (* check var binding exist : id *)
+          and trvar (A.SimpleVar(id,pos)) = (* check var binding exist : id *)
             (case S.look(venv,id) of
                 SOME(E.VarEntry{access, ty}) => {exp=Tr.transSIMPLEVAR(access, level), ty=actual_ty ty}
               | SOME(E.FunEntry{level=funLevel, label=funLabel, formals, result}) =>
@@ -408,6 +408,7 @@ struct
                       val func_venv = foldr putParamInVenv venv' param_zip
                       (* translate func body *)
                       val {exp=body_exp, ty=body_rt} = transExp(func_venv, tenv, NONE, func_level) body' (* NONE -> new fundec, not in loop *)
+
                       (* remember the proc fragment *)
                       val proc_entry_exit = Tr.procEntryExit({level=func_level, body=body_exp})
                     in
