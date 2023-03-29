@@ -86,7 +86,7 @@ fun exp access fp_exp =
     case access of InReg(tmp) => Tree.TEMP tmp
                  | InFrame(offset) => Tree.MEM(Tree.BINOP(Tree.PLUS, fp_exp, Tree.CONST(offset)))
 
-fun string(l:Temp.label, s:string) = Symbol.name(l) ^ ": .asciiz " ^ s
+fun string(l:Temp.label, s:string) = Symbol.name(l) ^ ": .asciiz \"" ^ String.toCString(s) ^ "\"\n"
 
 fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP] @ calleesaves_reg, dst=[], jump=SOME[]}]
 

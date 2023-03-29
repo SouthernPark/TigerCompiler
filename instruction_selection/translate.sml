@@ -268,12 +268,15 @@ fun transCall(arg_exps, _, TOP, calleeLabel) = Ex(T.CALL(T.NAME calleeLabel, (ma
 (* simple var *)
 fun transSIMPLEVAR ((varLevel, F.InReg(temp):F.access):access, funLevel) = Ex(F.exp (F.InReg(temp)) (T.TEMP(F.FP)))
   | transSIMPLEVAR ((varLevel, F.InFrame(offset)):access, funLevel) =
-    let val Level({parent=funcParent, frame=funFrame}, _) = funLevel
-        val Level({parent=varParent, frame=varFrame}, _) = varLevel
-        fun findStaticLink(funcLevel, varLevel, fp) =
-            if isEqualLevel(funcLevel, varLevel) then (fp)
+    let
+      fun findStaticLink(func_level, var_level, fp) =
+          let
+            val Level({parent=funcParent, frame=funFrame}, _) = func_level
+          in
+            if isEqualLevel(func_level, var_level) then (fp)
             (*var level has a higher level*)
-            else let val deref_fp = getSLFromFrame((hd (F.formals funFrame)) ,fp) in findStaticLink(funcParent, varLevel, deref_fp) end
+            else let val deref_fp = getSLFromFrame((hd (F.formals funFrame)) ,fp) in findStaticLink(funcParent, var_level, deref_fp) end
+          end
         val sl = findStaticLink(funLevel, varLevel, T.TEMP(F.FP))
     in
       Ex(F.exp (F.InFrame(offset)) sl)
