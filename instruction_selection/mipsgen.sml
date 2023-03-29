@@ -20,20 +20,69 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
     let val ilist = ref (nil: A.instr list)
         fun emit x= ilist := x :: !ilist
         fun result(gen) = let val t = Temp.newtemp() in gen t; t end
+
+        fun binopIns (oper) = case oper of T.PLUS => "add"
+                                         | T.MINUS => "sub"
+                                         | T.MUL => "mul"
+                                         | T.DIV => "div"
+        
+        fun relopIns (oper) = case oper of T.EQ => "beq"
+                                         | T.NE => "bne"
+                                         | T.LT => "blt"
+                                         | T.GT => "bgt"
+                                         | T.LE => "ble"
+                                         | T.GE => "bge"
+
         fun munchStm (T.SEQ(stm1, stm2)) = (munchStm stm1; munchStm stm2)
+          (* sw *)
           | munchStm (T.MOVE(T.MEM(T.BINOP(T.PLUS, e1, T.CONST i)), e2)) = (* # of nodes 4 *)
             emit(A.OPER{
                     assem = "sw `s0, " ^ Int.toString(i) ^ "(`s1)\n",
                     src = [munchExp e2, munchExp e1],
                     dst = [], jump = NONE
                 })
+          | munchStm (T.MOVE(T.MEM(T.BINOP(T.PLUS, T.CONST i, e1)), e2)) = (* # of nodes 4 *)
+            emit(A.OPER{
+                    assem = "sw `s0, " ^ Int.toString(i) ^ "(`s1)\n",
+                    src = [munchExp e2, munchExp e1],
+                    dst = [], jump = NONE
+                })
+          | munchStm(T.MOVE(T.MEM(T.CONST i), e2)) = (* # of nodes 3 *)
+            emit(A.OPER{
+                    assem = "sw `s0, " ^ Int.toString(i) ^ "($zero)\n",
+                    src=[munchExp e2], 
+                    dst=[],jump=NONE
+                })
+          | munchStm (T.MOVE(T.MEM(e1), e2)) = (* # of nodes 2 *)
+            emit(A.OPER{
+                    assem = "sw `s0, 0(`s1) \n",
+                    src = [munchExp e2, munchExp e1],
+                    dst = [], jump = NONE
+                })
+          (* move const to reg *)
           | munchStm (T.MOVE(T.TEMP t, T.CONST i)) = (* # of nodes 1 *)
             emit(A.OPER{
                     assem = "li `d0, " ^ Int.toString(i) ^ "\n",
                     src = [],
                     dst = [t], jump = NONE
                 })
+          (* move reg to reg *)
+          | munchStm (T.MOVE(T.TEMP t, e2)) = (* # of nodes 1 *)
+            emit(A.OPER{
+                    assem = "move `d0, `s0\n",
+                    src = [munchExp e2],
+                    dst = [t], jump = NONE
+                })
+          (* label *)
           | munchStm (T.LABEL lab) = emit(A.LABEL{assem= S.name lab ^  ":\n", lab=lab})
+          (* cjump *)
+          | munchStm (T.CJUMP(oper, e1, e2, label_ture, label_false)) =
+            emit(A.OPER{
+                    assem = relopIns oper ^ " `s0, `s1, " ^ S.name(label_ture) ^ "\n",
+                    src = [munchExp e1, munchExp e2],
+                    dst = [], jump = SOME([label_ture, label_false])
+                })
+          (* jump *)
           | munchStm (T.JUMP(e1, label_lst)) =
             emit(A.OPER{
                     assem = "j " ^ S.name(hd(label_lst)) ^ "\n",
@@ -42,18 +91,53 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
                 })
         and result (gen) = let val t = Temp.newtemp() in gen t; t end
         and munchExp (T.ESEQ(stm, exp)) = (munchStm(stm); munchExp exp)
-          | munchExp (T.TEMP t) = t
-          | munchExp (T.BINOP(PLUS, T.TEMP t, T.CONST i)) = (* # of nodes 2 *)
+          (* lw *)
+          | munchExp (T.MEM(T.BINOP(T.PLUS, T.CONST i, e2))) = (* # of nodes 3 *)
+            result(fn r => emit(A.OPER{
+                                   assem = "lw `d0, " ^ Int.toString(i) ^ "(`s0)\n",
+                                   src = [munchExp e2], dst = [r], jump = NONE
+                  }))
+          | munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) = (* # of nodes 3 *)
+            result(fn r => emit(A.OPER{
+                                   assem = "lw `d0, " ^ Int.toString(i) ^ "(`s0)\n",
+                                   src = [munchExp e1], dst = [r], jump = NONE
+                  }))
+          (* addi *)
+          | munchExp (T.BINOP(T.PLUS, T.TEMP t, T.CONST i)) = (* # of nodes 2 *)
             result(fn r => emit(A.OPER{
                                    assem = "addi `d0, `s0, " ^ Int.toString(i) ^ "\n",
                                    src = [t], dst = [r], jump = NONE
                   }))
-
+          | munchExp (T.BINOP(T.PLUS, e1, T.CONST i)) = (* # of nodes 2 *)
+            result(fn r => emit(A.OPER{
+                                   assem = "addi `d0, `s0, " ^ Int.toString(i) ^ "\n",
+                                   src = [munchExp e1], dst = [r], jump = NONE
+                  }))
+          | munchExp (T.BINOP(T.PLUS, T.CONST i, e2)) = (* # of nodes 2 *)
+            result(fn r => emit(A.OPER{
+                                   assem = "addi `d0, `s0, " ^ Int.toString(i) ^ "\n",
+                                   src = [munchExp e2], dst = [r], jump = NONE
+                  }))
+          (* binop *)
+          | munchExp (T.BINOP(oper, e1, e2)) = (* # of nodes 2 *)
+            result(fn r => emit(A.OPER{
+                                   assem = binopIns oper ^ " `d0, `s0, `s1\n",
+                                   src = [munchExp e1, munchExp e2], dst = [r], jump = NONE
+                  }))
+          (* const *)
           | munchExp (T.CONST i) = (* # of nodes 1 *)
             result(fn r => emit(A.OPER{
                                    assem = "li `d0, " ^ Int.toString(i) ^ "\n",
                                    src = [], dst = [r], jump = NONE
                   }))
+          (* lw *)
+          | munchExp (T.MEM e1) = (* # of nodes 1 *)
+            result(fn r => emit(A.OPER{
+                                    assem = "lw `d0, 0(`s0)\n",
+                                    src = [munchExp e1], dst = [r], jump = NONE
+                  }))
+          (* temp *)
+          | munchExp (T.TEMP t) = t
     in
       munchStm stm;
       rev(!ilist)
