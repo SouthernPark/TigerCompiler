@@ -53,6 +53,10 @@ val RA = Temp.newtemp()
 val RV = Temp.newtemp()
 
 val calleesaves_reg = [S0, S1, S2, S3, S4, S5, S6, S7]
+val callersaves_reg = [T0, T1, T2, T3, T4, T5, T6, T7, T8, T9]
+val args_reg = [A0, A1, A2, A3]
+val return_address = [RA]
+val return_values = [V0, V1]
 
 val wordsize = 4
 val numArgRegisters = 4 (*MIPS has 4 registers for argument*)
