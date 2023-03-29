@@ -34,6 +34,7 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
                                          | T.GE => "bge"
 
         fun munchStm (T.SEQ(stm1, stm2)) = (munchStm stm1; munchStm stm2)
+          | munchStm (T.EXP(e)) = (munchExp e; ())
           (* sw *)
           | munchStm (T.MOVE(T.MEM(T.BINOP(T.PLUS, e1, T.CONST i)), e2)) = (* # of nodes 4 *)
             emit(A.OPER{
@@ -138,6 +139,47 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
                   }))
           (* temp *)
           | munchExp (T.TEMP t) = t
+          (* name *)
+          | munchExp (T.NAME lab) = 
+            result(fn r => emit(A.OPER{
+                                    assem = "la `d0, " ^ Symbol.name(lab) ^ "\n",
+                                    src = [], dst = [r], jump = NONE
+                  }))
+          (* call *)
+          | munchExp (T.CALL(T.NAME callee_label, args)) =
+            let
+              val fp = T.TEMP Frame.SP (* new fp for the frame *)
+              val extra_arg_num = List.length args - 4
+              val offset = if extra_arg_num <= 0 then 0 else extra_arg_num * 4
+              val new_sp_stm = T.MOVE(T.TEMP Frame.SP, T.BINOP(T.PLUS, fp, T.CONST offset))
+              val old_sp_stm = T.MOVE(T.TEMP Frame.SP, fp)
+            in
+              (
+                munchStm new_sp_stm; (* new sp *)
+                emit(A.OPER{
+                            assem = "jal " ^ Symbol.name(callee_label) ^ "\n",
+                            src = munchArgs(0, args),
+                            dst = Frame.return_address @ Frame.return_values @ Frame.callersaves_reg @ Frame.args_reg,
+                            jump = NONE
+                    });
+                munchStm old_sp_stm; (* restore sp *)
+                Frame.V0 (* return value *)
+              )
+            end
+        and munchArgs (index, []) = []
+          | munchArgs (index, curr_arg::args) =
+            let
+              val move_arg_stm = T.MOVE(T.TEMP(List.nth(Frame.args_reg, index)), curr_arg)
+              val arg_temp = T.TEMP((List.nth(Frame.args_reg, index)))
+              val move_sp_stm = T.MOVE(T.MEM(T.BINOP(T.PLUS, T.TEMP(Frame.SP), T.CONST(((index - 3) * 4)))), curr_arg)
+            in
+              if index < 4 
+              (* use a0-a4 regs *)
+              then (munchStm(move_arg_stm); [munchExp arg_temp] @ munchArgs(index + 1, args))
+              (* extra on stack *)
+              else (munchStm(move_sp_stm); munchArgs(index + 1, args))
+            end
+            
     in
       munchStm stm;
       rev(!ilist)
