@@ -23,6 +23,7 @@ printtree.sml
 canon.sml
 assem.sml
 mipsgen.sml
+findescape.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/basis.cm
