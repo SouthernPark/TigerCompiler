@@ -14,6 +14,7 @@ translate.sml
 semant.sml
 main.sml
 prabsyn.sml
+findescape.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/basis.cm
