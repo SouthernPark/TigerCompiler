@@ -37,6 +37,7 @@ fun withOpenFile fname f =
 fun compile filename =
     let val absyn = Parse.parse filename
         (* TODO: implement find escape, val frags = (FindEscape.prog absyn; Semant.transProg absyn) *)
+        val set_escape = FindEscape.findEscape absyn
         val frags = Semant.transProg absyn
     in
       withOpenFile (filename ^ ".s")
