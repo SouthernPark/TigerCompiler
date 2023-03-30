@@ -172,6 +172,19 @@ We return the least upper bound of type1 and type2.
 
 
 
+* Find Escaping
+
+Escape means the variables can not be stored in register for some reasons, instead we need to escape them in memo.
+
+For example, if we need to use the address of a var, we can not sotree them in reg, because reg does not have address.
+
+For Tiger, we do not have a grammar for adressing, so we do not need to worry about this case. But there is one case, we need to take care of:
+
+When variable is used in a lower level than its declaration level, then we need to escape this variable. Why? We use static link to find this variable is in which frame.
+
+The structure defined in findEscape.sml define a structure help us to do this.
+
+
 * issue
 
 ** TODO access field defiend in env.sig
