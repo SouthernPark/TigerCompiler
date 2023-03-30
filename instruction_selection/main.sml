@@ -16,8 +16,15 @@ fun emitproc out (F.PROC{body,frame}) =
         val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
 	val instrs =   List.concat(map (G.codegen frame) stms')
         val format0 = Assem.format(Temp.makestring)
+        val add_live_regs_instrs = F.procEntryExit2(frame, instrs)
+        val add_procedure = F.procEntryExit3(frame, add_live_regs_instrs)
+        val final_instrs = #body(add_procedure)
+        val prolog = #prolog(add_procedure)
+        val epilog = #epilog(add_procedure)
     in
-      app (fn i => TextIO.output(out,format0 i)) instrs
+      (* TextIO.output(out, prolog); *)
+      app (fn i => TextIO.output(out,format0 i)) final_instrs
+      (* TextIO.output(out, epilog) *)
     end
   | emitproc out (F.STRING(lab,s)) = TextIO.output(out,F.string(lab,s))
 

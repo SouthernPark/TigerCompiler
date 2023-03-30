@@ -50,7 +50,6 @@ val SP = Temp.newtemp()
 val FP = Temp.newtemp()
 (* return address *)
 val RA = Temp.newtemp()
-val RV = Temp.newtemp()
 
 val calleesaves_reg = [S0, S1, S2, S3, S4, S5, S6, S7]
 val callersaves_reg = [T0, T1, T2, T3, T4, T5, T6, T7, T8, T9]
@@ -88,8 +87,11 @@ fun exp access fp_exp =
 
 fun string(l:Temp.label, s:string) = Symbol.name(l) ^ ": .asciiz \"" ^ String.toCString(s) ^ "\"\n"
 
+(* temporaries zero, return-address, stack-pointer, and all the
+    callee-saves registers are still live at the end of the function *)
 fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP] @ calleesaves_reg, dst=[], jump=SOME[]}]
 
+(* procedure entry/exit sequences *)
 fun procEntryExit3({name, formals, numLocalVars, curOffSet}, body) =
                                     {prolog = "PROCEDURE " ^ (Symbol.name name) ^ "\n",
                                         body = body,
