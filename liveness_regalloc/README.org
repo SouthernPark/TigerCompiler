@@ -1,0 +1,214 @@
+#+TITLE Semantic Analysis
+#+DATE <2023-03-26 Sun>
+#+TODO: TODO INPROCESS UNSURE DONE
+
+Canonize + instruction selection
+
+* grader read
++ MIPS doesn't have subi, we can achieve the same effect as a subtraction by using the /addi/ or we could move the const to a reg and use /sub/. Here, we choose the second solution.
++ for comparison operators like >, <=, >=, mips doesn't have built in instructions, we use slt, xori, and reverse operands to solve it
+
+* new file added
+
+| name          | description                                         |
+| canon.sml     | provided by the book, used to canonize our IR tree  |
+| assem.sml     | provided by the book, abstract assembly instruction |
+| flowgraph.sml | provided by the book, not know                      |
+| graph.sig     | provided by the book, signature for graph structure |
+| graph.sml     | provided by the book,                               |
+| main.sml      | provided by the book, compile and emit assembly     |
+| runtime.c     | provided by the bokk, library functions             |
+| mipsgen.sml   | need to implement "Maximal Munch" algorithm         |
+
+
+* MIPS
+
+[[https://uweb.engr.arizona.edu/~ece369/Resources/spim/MIPSReference.pdf][mips instruction]]
+
+Mips does not have a memory-to-memory move instruction. In MIPS, data transfer between memory locations must be done using a register as an intermediate.
+
+MIPS /mult $s, $t/, This instruction multiplies the signed integers in registers $s and $t, and stores the 64-bit result in registers $HI and $LO.
+
+MIPS doesn't have subi, we can achieve the same effect as a subtraction by using the /addi/ or we could move the const to a reg and use /sub/. Here, we choose the second solution.
+
+/and $d, $s, $t/ instruction in MIPS treat is operand as unsigned integer, and it performs the bitwise AND operation bit by bit, without regard to the sign of the operands.
+
+Seems mips has left logical shift but not left arithmetic shift.
+
+Mips has both right logical shift and right arithmetic shift
+
+Note, that although we use $t below, the code in assem.sml only handle /s, d, j/ regs, so t will be written as "s1"
+
+#+BEGIN_SRC
++----------------+--------------+------------------------------+-------------+-----------+
+| name           | effect       |trees                         | notes       |# of nodes |
++----------------+--------------+------------------------------+-------------+-----------+
+| add $d, $s, $t | $d = $s + $t |  +                           |signed       | 1         |
+|                |              | / \                          |arithmatics  |           |
+|                |              |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|sub $d, $s, $t  | $d = $s - $t |  -                           |signed       | 1         |
+|                |              | / \                          |             |           |
+|                |              |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|mul $d, $s, $t  | $d = $s * $t |  *                           |low 32 bits  | 1         |
+|                |              | / \                          |of the res is|           |
+|                |              |                              |stored in $d |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|mult $s, $t     |hi:lo = $s *  |  *                           |may need to  | 1         |
+|                |$t            | / \                          |move value in|           |
+|                |              |                              |low reg      |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|div $s, $t      |lo = $s / $t  |  /                           |may need to  | 1         |
+|                |hi = $s % $t  | / \                          |mvoe value in|           |
+|                |              |                              |low reg      |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|addi $t, $s, i  |$t = $s +     |                              |c means      | 1 or 2    |
+|                |SE(i)         |   +    +    c                |cosnt, mips  |           |
+|                |              |  / \  / \                    |does not have|           |
+|                |              | c        c                   |subi, we use |           |
+|                |              |                              |addi         |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|sub $d, $s, $t  |$d = $s - $t  |  -                           |             | 1         |
+|                |              | / \                          |             |           |
+|                |              |                              |             |           |
+|                |              |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|and $d, $s, $t  |$d = $s & $t  |  &                           |bit wise AND | 1         |
+|                |              | / \                          |operation    |           |
+|                |              |                              |             |           |
+|                |              |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|andi $d, $s, i  |$d = $s &     |  &     &                     |bit wise and | 2         |
+|                |ZE(i)         | / \   / \                    |operation    |           |
+|                |              | i        i                   |with         |           |
+|                |              |                              |immediate    |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|or $d, $s, $t   |$d = $s | $t  |   |                          |bitwise or   | 1         |
+|                |              |  / \                         |operation    |           |
+|                |              |                              |             |           |
+|                |              |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|ori $d, $s, i   |$d = $s |     |   |     |                    |bitwise or   | 2         |
+|                |ZE(i)         |  / \   / \                   |operation    |           |
+|                |              | i         i                  |with         |           |
+|                |              |                              |immediate    |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|xor $d, $s, $t  |$d = $s ^ $t  |  ^                           |bitwise xor  | 1         |
+|                |              | / \                          |             |           |
+|                |              |                              |             |           |
+|                |              |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|xori $d, $s, i  |$d = $s ^     |   ^      ^                   |bitwise xor  | 2         |
+|                |ZE(i)         |  / \    / \                  |with unsiged |           |
+|                |              |     i     i                  |immediate    |           |
+|                |              |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|sll $d, $t, a   |$d = $t << a  |  <<                          |shift left   | 2         |
+|                |              | / \                          |logical, fill|           |
+|                |              |   a                          |the empty    |           |
+|                |              |                              |with 0       |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|sllv $d, $t, $s |$d = $t << $s |  <<                          |same as above| 1         |
+|                |              | / \                          |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|srl $d, $t, a   |$d = $t >>> a |   >>>                        |shift right  | 2         |
+|                |              |   / \                        |logical, fill|           |
+|                |              |      a                       |the leftmost |           |
+|                |              |                              |bit with 0   |           |
+|                |              |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|srlv $d, $t, $s |$d = $t >>> $s|  >>>                         |same as above| 1         |
+|                |              |  / \                         |             |           |
+|                |              |                              |             |           |
+|                |              |                              |             |           |
+|                |              |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|sra $d, $t, a   |$d = $t >> a  |  >>                          |shift right  | 2         |
+|                |              | / \                          |arithmetic,  |           |
+|                |              |    a                         |fill the left|           |
+|                |              |                              |most bit with|           |
+|                |              |                              |sign bit     |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|srav $d, $t, $s |$d = $t >> $s |  >>                          |same as above| 1         |
+|                |              | / \                          |             |           |
+|                |              |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|lw $t, i($s)    |$t = MEM[$s+i]| MEM   MEM   MEM   MEM        |load word (4 | 3, 2, 1   |
+|                |              |  |     |     |     |         |bytes)       |           |
+|                |              |  +     +     i               |             |           |
+|                |              | / \   / \                    |             |           |
+|                |              | i        i                   |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|sw $t, i($s)    |MEM[$s+i] = $t|   MOVE   MOVE   MOVE    MOVE |store word (4| 4, 3, 2   |
+|                |              |     |      |     |       |   |bytes)       |           |
+|                |              |    / \    / \   / \     / \  |             |           |
+|                |              |  MEM    MEM    MEM    MEM    |             |           |
+|                |              |   |       |     |      |     |             |           |
+|                |              |   +       +     i            |             |           |
+|                |              |  / \     / \                 |             |           |
+|                |              |  i         i                 |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|move $d, $s     |$d = $s       |  move                        |reg to reg   | 1         |
+|                |              |   / \                        |move         |           |
+|                |              |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|li $d, i        |$d = i        |  const                       |const to reg | 1         |
+|                |              |                              |move         |           |
+|                |              |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|slt $d, $s, $t  |$d = ($s < $t)|   <                          |PS: need to  | 1         |
+|                |              |  / \                         |reverse      |           |
+|                |              |                              |operands     |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|set greater than|$d = ($s > $t)|   >                          |mips does not| 1         |
+|slt $d, $t, $s  |              |  / \                         |have >, we   |           |
+|                |              |                              |use slt to   |           |
+|                |              |                              |achieve it   |           |
++----------------+--------------+------------------------------+-------------+-----------+
+| >=:            |$t1 = ($s <   |  >=                          |same as above| 1         |
+| slt $t1, $s, $t|$t)           | / \                          |             |           |
+| xori $d, $t1, 1|$d = ($t1     |                              |             |           |
+|                |^ 1)          |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+| <=:            |              |                              |same as above| 1         |
+| slt $t1, $t, $s|$t1 = ($s >   |    <=                        |PS: need to  |           |
+| xori $d, $t1, 1|$t)           |   / \                        |reverse      |           |
+|                |$d = ($t1     |                              |operand      |           |
+|                |^ 1)          |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+|j lable         |pc = label    |  j                           |             |           |
+|                |              |  |                           |             |           |
+|                |              |  label                       |             |           |
+|                |              |                              |             |           |
+|                |              |                              |             |           |
++----------------+--------------+------------------------------+-------------+-----------+
+#+END_SRC
+
+* todo
+
+** implement maximal munch in mipsgen.sml
+
+** implement FindEscape
+optional requirement in instruction selection phase
+
+* Issue
+
+** TODO arguments passing in Call exp
+Currently, we set the escaping of all args as true. Therefore, all the args will not be stored in the regs but in the frame.
+
+For the munchArgs described in page 204, which generate code to move args to correct position and returns a list of temps that are to be passed machine's call exp, what should we return if all the args are in the frame. (It also says, we need these for later liveness analysis)
+
+** string in assembly
+Below is an example of string in MIPS assembly:
+#+BEGIN_SRC
+.data
+myString: .asciiz "Hello, world!"
+#+END_SRC
+
+.asciiz directive, which tells the assembler to allocate space for the string and add a null terminator at the end
+
+
+
+
+
