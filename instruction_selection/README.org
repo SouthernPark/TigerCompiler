@@ -1,4 +1,4 @@
-#+TITLE Semantic Analysis
+#+TITLE Instruction Selection
 #+DATE <2023-03-26 Sun>
 #+TODO: TODO INPROCESS UNSURE DONE
 
