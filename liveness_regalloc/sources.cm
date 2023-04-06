@@ -24,6 +24,11 @@ canon.sml
 assem.sml
 mipsgen.sml
 findescape.sml
+graph.sig
+graph.sml
+flowgraph.sml
+liveness.sml
+makegraph.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/basis.cm
