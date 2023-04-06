@@ -29,6 +29,8 @@ graph.sml
 flowgraph.sml
 liveness.sml
 makegraph.sml
+funcgraph.sig
+funcgraph.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/basis.cm
