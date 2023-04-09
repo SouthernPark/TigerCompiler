@@ -10,16 +10,14 @@ struct
   val compare = String.compare
 end
 
-structure G = FuncGraph(intKey)
-structure F = Flow
-structure LabelMap = SplayMapFn(stringKey)
-
 structure MakeGraph :
 sig 
-  val instrs2graph : Assem.instr list -> F.flowgraph * Assem.instr F.Graph.node list
-  (* val instrs2graph : Assem.instr list -> unit *)
+  val instrs2graph : Assem.instr list -> Flow.flowgraph * Assem.instr Flow.Graph.node list
 end =
 struct
+  structure F = Flow
+  structure LabelMap = SplayMapFn(stringKey)
+  
   fun instrs2graph instrlist = 
     let
       (* add nodeid->instruction into graph *)
