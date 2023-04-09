@@ -1,9 +1,21 @@
 structure Flow =
 struct
-    datatype flowgraph = FGRAPH of {control: Graph.graph,
-				    def: Temp.temp list Graph.Table.table,
-				    use: Temp.temp list Graph.Table.table,
-				    ismove: bool Graph.Table.table}
+      structure Graph = FuncGraph(
+            struct
+                  type ord_key = int
+                  val compare = Int.compare
+            end
+      )
+      structure NodeMap = SplayMapFn(
+            struct
+                  type ord_key = int
+                  val compare = Int.compare
+            end
+      )
+      datatype flowgraph = FGRAPH of {control: Assem.instr Graph.graph,
+				    def: Temp.temp list NodeMap.map,
+				    use: Temp.temp list NodeMap.map,
+				    ismove: bool NodeMap.map}
 
   (* Note:  any "use" within the block is assumed to be BEFORE a "def" 
         of the same variable.  If there is a def(x) followed by use(x)
