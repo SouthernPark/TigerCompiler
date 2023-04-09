@@ -76,10 +76,10 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
                 })
           (* move reg to reg *)
           | munchStm (T.MOVE(T.TEMP t, e2)) = (* # of nodes 1 *)
-            emit(A.OPER{
+            emit(A.MOVE{
                     assem = "move `d0, `s0\n",
-                    src = [munchExp e2],
-                    dst = [t], jump = NONE
+                    src = munchExp e2,
+                    dst = t
                 })
           (* label *)
           | munchStm (T.LABEL lab) = emit(A.LABEL{assem= S.name lab ^  ":\n", lab=lab})

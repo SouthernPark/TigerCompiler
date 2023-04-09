@@ -5,7 +5,7 @@
 Canonize + instruction selection
 
 * grader read
-+ 
++ We are using funcgraph instead of original graph provided by textbook
 + 
 
 * new file added
@@ -17,7 +17,9 @@ Canonize + instruction selection
 * todo
 
 ** Liveness
-implement MakeGraph structure
+done: implement MakeGraph structure (add nodes, edges to make a complete flowgraph)
 implement Liveness structure
+
+
 
 ** Reg Allocation
