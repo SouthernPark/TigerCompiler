@@ -5,7 +5,7 @@
 Canonize + instruction selection
 
 * grader read
-+ We are using funcgraph instead of original graph provided by textbook
++ We are using funcgraph to implement flowgraph and interference graph instead of original graph provided by textbook
 + 
 
 * new file added
@@ -18,7 +18,7 @@ Canonize + instruction selection
 
 ** Liveness
 done: implement MakeGraph structure (add nodes, edges to make a complete flowgraph)
-implement Liveness structure
+done: implement Liveness structure (computer live_in and live_out map for each node, make an interference graph)
 
 
 
