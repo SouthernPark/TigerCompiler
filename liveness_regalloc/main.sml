@@ -21,6 +21,19 @@ fun emitproc out (F.PROC{body,frame}) =
         val final_instrs = #body(add_procedure)
         val prolog = #prolog(add_procedure)
         val epilog = #epilog(add_procedure)
+        (* test for flowgraph and interference graph *)
+        (* val (Flow.FGRAPH{control, def, use, ismove}, nodelist) = MakeGraph.instrs2graph final_instrs
+        fun stringify (nodeid, data) = 
+          let
+            val instruction_str = case data of Assem.OPER{assem, dst, src, jump} => assem
+                      | Assem.LABEL{assem, lab} => (assem ^ " " ^ Symbol.name(lab))
+                      | Assem.MOVE{assem, dst, src} =>(assem ^ "dst: " ^ Int.toString(dst) ^ ", src: " ^ Int.toString(src) ^ "\n")
+          in
+            "Nodeid " ^ Int.toString(nodeid) ^ " : instruction " ^ instruction_str
+          end
+        val print_fg = Flow.Graph.printGraph stringify control
+        val (ig,func) = Liveness.interferenceGraph (Flow.FGRAPH{control=control, def=def, use=use, ismove=ismove})
+        val print_ig = Liveness.show(TextIO.stdOut, ig) *)
     in
       (* TextIO.output(out, prolog); *)
       app (fn i => TextIO.output(out,format0 i)) final_instrs

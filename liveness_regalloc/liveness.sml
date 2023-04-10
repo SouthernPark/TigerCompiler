@@ -52,8 +52,8 @@ struct
           and iterate to a least fixed point *)
       fun computeLiveness (livein, liveout, nodes) = 
         let
-          val last_livein = livein
-          val last_liveout = liveout
+          val last_li = livein
+          val last_lo = liveout
           fun updateLiveness (li_map, lo_map) = 
             let
               fun update (curr_node, (curr_li, curr_lo)) = 
@@ -79,7 +79,7 @@ struct
             end
           val (update_li, update_lo) = updateLiveness(livein, liveout)
         in
-          if checkLeastFixedPoint (update_li, last_livein, update_lo, last_liveout, nodes)
+          if checkLeastFixedPoint (update_li, last_li, update_lo, last_lo, nodes)
           then (update_li, update_lo)
           else computeLiveness(update_li, update_lo, nodes)
         end
@@ -182,7 +182,7 @@ struct
       makeIgraph(complete_limap, complete_lomap)
     end
   
-  fun show (outstream, IGRAPH{graph,tnode, gtemp, moves}) = 
+  fun show (outstream, IGRAPH{graph, tnode, gtemp, moves}) = 
     let
       fun stringify (nodeid, data) = 
         "Nodeid " ^ Int.toString(nodeid) ^ " : temp " ^ Int.toString(data)
