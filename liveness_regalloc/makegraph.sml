@@ -73,7 +73,7 @@ struct
 
       val node_index = ref 0
       (* instruction number i to number i+1 *)
-      fun addNormalEdges (index, graph) = if index + 1 > List.length(instrlist) 
+      fun addNormalEdges (index, graph) = if index + 1 >= List.length(instrlist) 
                                           then graph 
                                           else F.Graph.addEdge(graph, {from=index, to=index+1})
       (* instruction number i to the other instruction where the label is *)

@@ -1,0 +1,6 @@
+let
+    var a := 3
+    var c := a
+in
+    c
+end
