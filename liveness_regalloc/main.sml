@@ -57,10 +57,17 @@ fun compile filename =
 	           (fn out => (app (emitproc out) frags))
     end
 
-fun compilePrint filename = let val frag_lst = Semant.transProg (Parse.parse filename)
-                            in
-                              Printtree.printProg frag_lst
-                            end
+fun compilePrint filename =
+    let
+      val absyn = Parse.parse filename
+      (* TODO: implement find escape, val frags = (FindEscape.prog absyn; Semant.transProg absyn) *)
+      val set_escape = FindEscape.findEscape absyn
+      val frags = Semant.transProg absyn
+      val () = withOpenFile (filename ^ ".s") (fn out => (app (emitproc out) frags))
+      val () = Printtree.printProg frags
+    in
+      frags
+    end
 
 end
 

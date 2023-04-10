@@ -1,4 +1,6 @@
 let
 	var a := 1
+	function f() : int = ord("a")
 in
+f()
 end
