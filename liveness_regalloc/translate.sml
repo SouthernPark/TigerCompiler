@@ -373,9 +373,8 @@ fun procEntryExit ({level=TOP, body=_}) = (ErrorMsg.error 0 "procEntryExit for a
   | procEntryExit ({level=Level({parent, frame:F.frame}, unique), body=body}) =
     let
       val body' = unEx body
-      val {name, formals, numLocalVars, curOffSet} = frame
     in
-      fraglist := !fraglist @ [F.PROC{body=T.MOVE(T.TEMP F.V0, T.ESEQ(T.LABEL name, body')), frame=frame}]
+      fraglist := !fraglist @ [F.PROC{body=T.MOVE(T.TEMP F.V0, body'), frame=frame}]
     end
 
 fun getResult () = !fraglist

@@ -1,5 +1,6 @@
 structure MipsFrame : FRAME =
 struct
+type register = string
 datatype access = InFrame of int | InReg of Temp.temp
 type frame = {name: Temp.label, formals : access list, numLocalVars : int ref, curOffSet : int ref}
 datatype frag = PROC of {body : Tree.stm,  frame : frame}
@@ -56,6 +57,22 @@ val callersaves_reg = [T0, T1, T2, T3, T4, T5, T6, T7, T8, T9]
 val args_reg = [A0, A1, A2, A3]
 val return_address = [RA]
 val return_values = [V0, V1]
+
+val registers = ["$zero", "$at", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3", "$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7", "$t8", "$t9", "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$k0", "$k1", "$gp", "$sp", "$fp", "$ra"]
+
+fun zip ([], []) = []
+  | zip ([], l) = []
+  | zip (l, []) = []
+  | zip ((a1::l1), (a2::l2)) = (a1, a2) :: zip(l1, l2)
+
+fun createTempMap () =
+    let val temps = [ZERO, AT] @ return_values @ args_reg @ callersaves_reg @ calleesaves_reg @ [K0, K1] @ [GP, SP, FP, RA]
+        val temp_color = zip (temps, registers)
+    in
+      foldl (fn ((temp, color), m) => Temp.Table.enter(m, temp, color)) Temp.Table.empty temp_color
+    end
+
+val tempMap = createTempMap ()
 
 val wordsize = 4
 val numArgRegisters = 4 (*MIPS has 4 registers for argument*)

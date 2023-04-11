@@ -1,5 +1,8 @@
 signature FRAME =
 sig type frame
+    type register
+    val registers : register list (* colors *)
+    val tempMap: register Temp.Table.table (* pre-color of machine regs, reg to color *)
     datatype access = InFrame of int | InReg of Temp.temp
     val FP: Temp.temp (* frame pointer register to hold current frame pointer *)
     val exp: access -> Tree.exp -> Tree.exp (* access -> FP -> var location *)
