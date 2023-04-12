@@ -60,6 +60,11 @@ fun getInitialTemps initial nodes = foldl (fn (node ,s) => case Temp.Table.look 
                                                                NONE => IntSet.add(s, IGraph.getNodeID node)
                                                              | _ => s) IntSet.empty nodes
 
+fun makeWorkList K degree initialTemps = IntSet.foldl (fn (node, (spillWorklist, simplifyWorklist))
+                                                          => if getDegree(degree, node) >= K
+                                                             then (IntSet.add(spillWorklist, node), simplifyWorklist)
+                                                             else (spillWorklist, IntSet.add(simplifyWorklist, node))
+                                                      ) (IntSet.empty, IntSet.empty) initialTemps
 
 
 fun color {interference: Liveness.igraph,
@@ -68,7 +73,7 @@ fun color {interference: Liveness.igraph,
            registers: Frame.register list} =
     let
       val Liveness.IGRAPH({graph, tnode, gtemp, moves}) = interference
-
+      (* data structures *)
       val nodes = IGraph.nodes graph (* node list, could use IGraph.getNodeID to get id *)
       val nodeSet = foldl (fn (node, s) => IntSet.add(s, IGraph.getNodeID node)) IntSet.empty nodes
       val degree = getDegreeList nodes (* nodeID to degree table *)
@@ -76,6 +81,12 @@ fun color {interference: Liveness.igraph,
       val adjMatrix = getAdjMatrix nodes (* (nodeID, nodeID) set *)
       val initialTempSet = getInitialTemps initial nodes (* temps that are not precolored, not machine regs *)
       val precolored = IntSet.difference (nodeSet, initialTempSet)
+      val K = IntSet.numItems precolored (* set K to the precolored machine registers *)
+
+      (* make worklist *)
+      val (spillWorklist, simplifyWorklist) = makeWorkList K degree initialTempSet
+      val initialTempSet = IntSet.empty (* after make worklist, all nodes here should be removed *)
+
     in
       (initial, [])
     end
