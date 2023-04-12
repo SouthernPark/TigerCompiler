@@ -35,9 +35,9 @@ fun emitproc out (F.PROC{body,frame}) =
         val (ig,func) = Liveness.interferenceGraph (Flow.FGRAPH{control=control, def=def, use=use, ismove=ismove})
         val print_ig = Liveness.show(TextIO.stdOut, ig) *)
     in
-      (* TextIO.output(out, prolog); *)
-      app (fn i => TextIO.output(out,format0 i)) final_instrs
-      (* TextIO.output(out, epilog) *)
+      TextIO.output(out, prolog);
+      app (fn i => TextIO.output(out,format0 i)) final_instrs;
+      TextIO.output(out, epilog)
     end
   | emitproc out (F.STRING(lab,s)) = TextIO.output(out,F.string(lab,s))
 

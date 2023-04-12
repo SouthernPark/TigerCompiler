@@ -108,11 +108,13 @@ fun string(l:Temp.label, s:string) = Symbol.name(l) ^ ": .asciiz \"" ^ String.to
     callee-saves registers are still live at the end of the function *)
 fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP] @ calleesaves_reg, dst=[], jump=SOME[]}]
 
-(* procedure entry/exit sequences *)
-fun procEntryExit3({name, formals, numLocalVars, curOffSet}, body) =
-                                    {prolog = "PROCEDURE " ^ (Symbol.name name) ^ "\n",
+(* procedure entry/exit sequences, adding jal labels *)
+fun procEntryExit3({name, formals, numLocalVars, curOffSet}, body) = 
+                                    {prolog = (Symbol.name name) ^ ":\n", body = body, epilog = ""}
+                                    (* for testing *)
+                                    (* {prolog = "PROCEDURE " ^ (Symbol.name name) ^ "\n",
                                         body = body,
-                                        epilog = "END " ^ (Symbol.name name) ^ "\n"}
+                                        epilog = "END " ^ (Symbol.name name) ^ "\n"} *)
 
 end
 
