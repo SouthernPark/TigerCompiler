@@ -20,6 +20,7 @@ tree.sml
 temp.sig
 temp.sml
 printtree.sml
+stack.sml
 canon.sml
 assem.sml
 mipsgen.sml
