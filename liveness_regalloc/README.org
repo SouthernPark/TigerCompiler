@@ -6,7 +6,7 @@ Canonize + instruction selection
 
 * grader read
 + We are using funcgraph to implement flowgraph and interference graph instead of original graph provided by textbook
-+ 
++
 
 * new file added
 
@@ -23,3 +23,20 @@ done: implement Liveness structure (computer live_in and live_out map for each n
 
 
 ** Reg Allocation
+
+* issue
+
+** TODO 1 precolored nodes
+
+The initial precolored nodes is obtained by:
+#+BEGIN_SRC
+val precolored = IntSet.difference (nodeSet, initialTempSet)
+#+END_SRC
+
+Nodes in the graph - intial temps that are not colored
+
+rather than set it to the 32 machine registers, is this correct ?
+
+I set K to be the length of precolored nodes, is it correct ?
+
+
