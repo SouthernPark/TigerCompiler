@@ -7,6 +7,7 @@ sig
   val top: 'a stack -> 'a option
   val size: 'a stack -> int
   val listItems: 'a stack -> 'a list
+
 end
 
 structure Stack :> STACK =

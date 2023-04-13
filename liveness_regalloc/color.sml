@@ -80,6 +80,7 @@ fun decrementDegree K (node, (degree, spillWorkList, newSimplifyWorkList)) =
       else (degree, spillWorkList, newSimplifyWorkList)
     end
 
+
 fun Adjacent adjList selectStack node = let val nodeAdjSet = IntMap.lookup(adjList, node)
                                             val selectStackSet = IntSet.fromList (Stack.listItems selectStack)
                                             val diff = IntSet.difference (nodeAdjSet, selectStackSet)
