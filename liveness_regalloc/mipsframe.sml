@@ -84,7 +84,7 @@ fun newFrame {name, formals} =
 	fun allocateFormals true = (curInFrameFormals := !curInFrameFormals+1;InFrame((!curInFrameFormals-1)*wordsize))
 	  | allocateFormals false = if !curInRegFormals > numArgRegisters
 				    then allocateFormals true
-				    else (curInRegFormals := !curInRegFormals+1;InReg(Temp.newtemp()))
+				    else (curInRegFormals := !curInRegFormals+1;InReg(List.nth(args_reg, !curInRegFormals)))
     in
 	{name = name, formals = (map allocateFormals formals), numLocalVars = ref 0, curOffSet = ref 0 }
     end
@@ -109,7 +109,7 @@ fun string(l:Temp.label, s:string) = Symbol.name(l) ^ ": .asciiz \"" ^ String.to
 fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP] @ calleesaves_reg, dst=[], jump=SOME[]}]
 
 (* procedure entry/exit sequences, adding jal labels *)
-fun procEntryExit3({name, formals, numLocalVars, curOffSet}, body) = 
+fun procEntryExit3({name, formals, numLocalVars, curOffSet}, body) =
                                     {prolog = (Symbol.name name) ^ ":\n", body = body, epilog = ""}
                                     (* for testing *)
                                     (* {prolog = "PROCEDURE " ^ (Symbol.name name) ^ "\n",
