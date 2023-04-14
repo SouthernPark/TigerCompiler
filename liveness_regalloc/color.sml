@@ -100,6 +100,51 @@ fun simplify K degree adjList spillWorkList simplifyWorklist selectStack =
                  ) (degree, spillWorkList, IntSet.empty, selectStack) simplifyWorklist
 
 
+fun assignColors adjList precolored selectStack =
+    let
+      fun while_loop (selectStack, coloredNodes, colorTable, spilledNodes) =
+          if Stack.isEmpty selectStack then (coloredNodes, colorTable, spilledNodes)
+          else excludeUsedColors (selectStack, coloredNodes, colorTable, spilledNodes)
+      and excludeUsedColors (selectStack, coloredNodes, colorTable, spilledNodes) =
+          let
+            val nodeid = valOf(Stack.top selectStack)
+            val selectStack = Stack.pop selectStack
+            val ok_colors = precolored
+            val neighbours = IntMap.lookup (adjList, nodeid)
+
+            fun exclude (curr_nodeid, okcolors) =
+                if IntSet.member(IntSet.union(coloredNodes, precolored), curr_nodeid)
+                then IntSet.subtract(okcolors, valOf(IntMap.find(colorTable, curr_nodeid)))
+                else okcolors
+
+            val ok_colors = foldl exclude ok_colors neighbours
+
+            fun assign () = if IntSet.isEmpty ok_colors then (coloredNodes, colorTable, IntSet.add(spilledNodes, nodeid))
+                            else (IntSet.add(coloredNodes, nodeid), IntMap.insert(colorTable, nodeid, List.nth(IntSet.listItems ok_colors, 0)), spilledNodes)
+            val (coloredNodes, colorTable, spilledNodes) = assign ()
+          in
+            while_loop(selectStack, coloredNodes, colorTable, spilledNodes)
+          end
+    in
+      while_loop(selectStack, IntSet.empty, IntMap.empty, IntSet.empty)
+    end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 fun color {interference: Liveness.igraph,
            initial: allocation,
            spillCost: Graph.node -> int,
