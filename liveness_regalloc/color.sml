@@ -99,6 +99,46 @@ fun simplify K degree adjList spillWorkList simplifyWorklist selectStack =
                      end
                  ) (degree, spillWorkList, IntSet.empty, selectStack) simplifyWorklist
 
+(* Assign colors to nodes *)
+(* 
+  selectStack: nodeid(temp) to assign colors
+  adjList: to find nodeid's adjacency
+  coloredNodes: nodeid set (nodeids which have been assigned color)
+  colorTable: nodeid->color table
+  spilledNodes: adjacency already use all k colors
+ *)
+fun assignColors(adjList, precolored, selectStack, coloredNodes, colorTable, spilledNodes) = 
+    let
+      val nodeid = valOf(Stack.top selectStack)
+      val _ = Stack.pop selectStack
+      val ok_colors = precolored
+      val neighbours = case IntMap.find(adjList, nodeid) of SOME(l) => l
+                                                          | NONE => []
+      fun excludeUsedColors () = 
+        let
+          fun exclude (curr_nodeid, okcolors) =
+            let
+              val isInSet = IntSet.member(coloredNodes, curr_nodeid)
+            in
+              if isInSet
+              then IntSet.subtract(okcolors, valOf(IntMap.find(colorTable, curr_nodeid)))
+              else okcolors
+            end
+        in
+          foldl exclude ok_colors neighbours
+        end
+      val ok_colors' = excludeUsedColors()
+      fun assign () = 
+        if (List.length (IntSet.listItems ok_colors')) = 0
+              then (coloredNodes, colorTable, IntSet.add(spilledNodes, nodeid)) (* no color to assign *)
+              else (IntSet.add(coloredNodes, nodeid), IntMap.insert(colorTable, nodeid, List.nth(IntSet.listItems ok_colors', 0)), spilledNodes) (* assign 0th color in ok_colors' *)
+      val (coloredNodes', colorTable', spilledNodes') = assign()
+    in
+      if (Stack.size selectStack) = 0
+      then ()
+      else assignColors(adjList, precolored, selectStack, coloredNodes', colorTable', spilledNodes')
+    end
+
 
 fun color {interference: Liveness.igraph,
            initial: allocation,
@@ -119,6 +159,12 @@ fun color {interference: Liveness.igraph,
       (* make worklist *)
       val (spillWorklist, simplifyWorklist) = makeWorkList K degree initialTempSet
       val initialTempSet = IntSet.empty (* after make worklist, all nodes here should be removed *)
+
+      (* loop to empty worklist and generate selectStack *)
+
+      (* assign colors *)
+      (* val (coloredNodes', colorTable', spilledNodes') = assignColors(adjList, precolored, selectStack, coloredNodes, colorTable, spilledNode) *)
+      (* TODO: generate coloredNodes set and colorTable, have to include precolored nodes, spilledNode = IntSet.empty *)
     in
       (initial, [])
     end
