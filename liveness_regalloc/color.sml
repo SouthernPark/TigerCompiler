@@ -110,7 +110,7 @@ fun simplify K degree adjList spillWorkList simplifyWorklist selectStack =
 fun assignColors(adjList, precolored, selectStack, coloredNodes, colorTable, spilledNodes) = 
     let
       val nodeid = valOf(Stack.top selectStack)
-      val _ = Stack.pop selectStack
+      val selectStack' = Stack.pop selectStack
       val ok_colors = precolored
       val neighbours = case IntMap.find(adjList, nodeid) of SOME(l) => l
                                                           | NONE => []
@@ -134,9 +134,9 @@ fun assignColors(adjList, precolored, selectStack, coloredNodes, colorTable, spi
               else (IntSet.add(coloredNodes, nodeid), IntMap.insert(colorTable, nodeid, List.nth(IntSet.listItems ok_colors', 0)), spilledNodes) (* assign 0th color in ok_colors' *)
       val (coloredNodes', colorTable', spilledNodes') = assign()
     in
-      if (Stack.size selectStack) = 0
+      if (Stack.size selectStack') = 0
       then ()
-      else assignColors(adjList, precolored, selectStack, coloredNodes', colorTable', spilledNodes')
+      else assignColors(adjList, precolored, selectStack', coloredNodes', colorTable', spilledNodes')
     end
 
 
