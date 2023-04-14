@@ -163,6 +163,7 @@ fun zip ([], []) = []
   | zip (l, []) = []
   | zip ((a1::l1), (a2::l2)) = (a1, a2) :: zip(l1, l2)
 
+
 fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
     let
       (* data structures *)
