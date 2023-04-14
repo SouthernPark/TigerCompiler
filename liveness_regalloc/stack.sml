@@ -7,6 +7,7 @@ sig
   val top: 'a stack -> 'a option
   val size: 'a stack -> int
   val listItems: 'a stack -> 'a list
+  val isEmpty: 'a stack -> bool
 
 end
 
@@ -24,5 +25,8 @@ fun top ([]) = NONE
 fun size (stack) = List.length stack
 
 fun listItems (stack) = stack
+
+fun isEmpty [] = true
+  | isEmpty _ = false
 
 end
