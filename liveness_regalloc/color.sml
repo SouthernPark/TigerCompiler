@@ -118,6 +118,8 @@ fun selectSpill selectStack adjList spillWorkList simplifyWorkList =
 
 fun assignColors adjList precolored selectStack =
     let
+      val coloredNodes = IntSet.foldl (fn (n, s) => IntSet.add(s, n)) IntSet.empty precolored
+      val colorTable = foldl (fn (n, m) => IntMap.insert(m, n, n)) IntMap.empty (IntSet.toList precolored)
       fun while_loop (selectStack, coloredNodes, colorTable, spilledNodes) =
           if Stack.isEmpty selectStack then (coloredNodes, colorTable, spilledNodes)
           else excludeUsedColors (selectStack, coloredNodes, colorTable, spilledNodes)
@@ -129,7 +131,7 @@ fun assignColors adjList precolored selectStack =
             val neighbours = IntMap.lookup (adjList, nodeid)
 
             fun exclude (curr_nodeid, okcolors) =
-                if IntSet.member(IntSet.union(coloredNodes, precolored), curr_nodeid)
+                if IntSet.member(coloredNodes, curr_nodeid)
                 then IntSet.subtract(okcolors, valOf(IntMap.find(colorTable, curr_nodeid)))
                 else okcolors
 
@@ -142,7 +144,7 @@ fun assignColors adjList precolored selectStack =
             while_loop(selectStack, coloredNodes, colorTable, spilledNodes)
           end
     in
-      while_loop(selectStack, IntSet.empty, IntMap.empty, IntSet.empty)
+      while_loop(selectStack, coloredNodes, colorTable, IntSet.empty)
     end
 
 fun zip ([], []) = []
