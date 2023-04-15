@@ -112,10 +112,10 @@ fun selectSpill selectStack adjList spillWorkList simplifyWorkList =
                                                      ) (List.nth(IntSet.toList spillWorkList, 0)) spillWorkList
       val m = findMaxDegree spillWorkList (* node we selected *)
     in
+      (* add to simplify list, so simpilfy list will be responsible for decrement ajacent degree and push to select stack *)
       (IntSet.add(simplifyWorkList, m), IntSet.subtract(spillWorkList, m))
     end
 
-
 fun assignColors adjList precolored selectStack =
     let
       fun while_loop (selectStack, coloredNodes, colorTable, spilledNodes) =
@@ -133,7 +133,7 @@ fun assignColors adjList precolored selectStack =
                 then IntSet.subtract(okcolors, valOf(IntMap.find(colorTable, curr_nodeid)))
                 else okcolors
 
-            val ok_colors = foldl exclude ok_colors neighbours
+            val ok_colors = IntSet.foldl exclude ok_colors neighbours
 
             fun assign () = if IntSet.isEmpty ok_colors then (coloredNodes, colorTable, IntSet.add(spilledNodes, nodeid))
                             else (IntSet.add(coloredNodes, nodeid), IntMap.insert(colorTable, nodeid, List.nth(IntSet.listItems ok_colors, 0)), spilledNodes)
@@ -145,58 +145,13 @@ fun assignColors adjList precolored selectStack =
       while_loop(selectStack, IntSet.empty, IntMap.empty, IntSet.empty)
     end
 
+fun zip ([], []) = []
+  | zip ([], l) = []
+  | zip (l, []) = []
+  | zip ((a1::l1), (a2::l2)) = (a1, a2) :: zip(l1, l2)
 
-fun assignColors adjList precolored selectStack =
+fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
     let
-      fun while_loop (selectStack, coloredNodes, colorTable, spilledNodes) =
-          if Stack.isEmpty selectStack then (coloredNodes, colorTable, spilledNodes)
-          else excludeUsedColors (selectStack, coloredNodes, colorTable, spilledNodes)
-      and excludeUsedColors (selectStack, coloredNodes, colorTable, spilledNodes) =
-          let
-            val nodeid = valOf(Stack.top selectStack)
-            val selectStack = Stack.pop selectStack
-            val ok_colors = precolored
-            val neighbours = IntMap.lookup (adjList, nodeid)
-
-            fun exclude (curr_nodeid, okcolors) =
-                if IntSet.member(IntSet.union(coloredNodes, precolored), curr_nodeid)
-                then IntSet.subtract(okcolors, valOf(IntMap.find(colorTable, curr_nodeid)))
-                else okcolors
-
-            val ok_colors = foldl exclude ok_colors neighbours
-
-            fun assign () = if IntSet.isEmpty ok_colors then (coloredNodes, colorTable, IntSet.add(spilledNodes, nodeid))
-                            else (IntSet.add(coloredNodes, nodeid), IntMap.insert(colorTable, nodeid, List.nth(IntSet.listItems ok_colors, 0)), spilledNodes)
-            val (coloredNodes, colorTable, spilledNodes) = assign ()
-          in
-            while_loop(selectStack, coloredNodes, colorTable, spilledNodes)
-          end
-    in
-      while_loop(selectStack, IntSet.empty, IntMap.empty, IntSet.empty)
-    end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-fun color {interference: Liveness.igraph,
-           initial: allocation,
-           spillCost: Graph.node -> int,
-           registers: Frame.register list} =
-    let
-      val Liveness.IGRAPH({graph, tnode, gtemp, moves}) = interference
       (* data structures *)
       val nodes = IGraph.nodes graph (* node list, could use IGraph.getNodeID to get id *)
       val nodeSet = foldl (fn (node, s) => IntSet.add(s, IGraph.getNodeID node)) IntSet.empty nodes
@@ -206,15 +161,52 @@ fun color {interference: Liveness.igraph,
       val initialTempSet = getInitialTemps initial nodes (* temps that are not precolored, not machine regs *)
       val precolored = IntSet.difference (nodeSet, initialTempSet)
       val K = IntSet.numItems precolored (* set K to the precolored machine registers *)
+      val selectStack = Stack.empty
 
       (* make worklist *)
       val (spillWorklist, simplifyWorklist) = makeWorkList K degree initialTempSet
       val initialTempSet = IntSet.empty (* after make worklist, all nodes here should be removed *)
+
+      (* loop until spillWorkList and simplifyWorkList is empty*)
+      fun repeat (degree, adjList, simplifyWorklist, spillWorklist, selectStack) =
+          if IntSet.isEmpty(simplifyWorklist) andalso IntSet.isEmpty(spillWorklist) then (simplifyWorklist, spillWorklist)
+          else
+            let
+              (* simplify *)
+              val (degree, spillWorkList, simplifyWorklist, selectStack) =
+                  if not (IntSet.isEmpty(simplifyWorklist))
+                  then simplify K degree adjList spillWorklist simplifyWorklist selectStack
+                  else (degree, spillWorklist, simplifyWorklist, selectStack)
+
+              (* selectSpill *)
+              val (simplifyWorkList, spillWorkList) = selectSpill selectStack adjList spillWorklist simplifyWorklist
+            in
+              repeat(degree, adjList, simplifyWorkList, spillWorkList, selectStack)
+            end
+
+      val (simplifyWorklist, spillWorklist) = repeat (degree, adjList, simplifyWorklist, spillWorklist, selectStack)
+
+      (*Transform output into the same format as Color.color's output*)
+      val (coloredNodes, colorTable, spilledNodes) =  assignColors  adjList precolored selectStack
+      val coloredNodeLst = IntSet.toList coloredNodes
+      val coloredRegLst = map (fn (coloredNode) =>
+                               valOf(Temp.Table.look(Frame.tempMap, IntMap.lookup(colorTable, coloredNode)))
+                           ) coloredNodeLst
+      val zips = zip((IntSet.toList coloredNodes), coloredRegLst)
+      val allocation = foldl (fn ((temp, color), t) => Temp.Table.enter(t, temp, color)) Temp.Table.empty zips
     in
-      (initial, [])
+      (allocation, IntSet.toList spilledNodes)
     end
 
 
+(*
+initial: machine register to string coloring
+registers: list of string coloring
+*)
+fun color {interference: Liveness.igraph,
+           initial: allocation,
+           spillCost: Graph.node -> int,
+           registers: Frame.register list} = main (interference, initial)
 
 end
 
