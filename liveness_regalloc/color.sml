@@ -109,7 +109,7 @@ fun selectSpill selectStack adjList spillWorkList simplifyWorkList =
                                                          in
                                                            if degree > maxDegree then node else maxNode
                                                          end
-                                                     ) (List.nth(IntSet.toList spillWorkList, 0)) spillWorkList
+                                                     ) (List.nth(IntSet.listItems spillWorkList, 0)) spillWorkList
       val m = findMaxDegree spillWorkList (* node we selected *)
     in
       (* add to simplify list, so simpilfy list will be responsible for decrement ajacent degree and push to select stack *)
@@ -119,7 +119,7 @@ fun selectSpill selectStack adjList spillWorkList simplifyWorkList =
 fun assignColors adjList precolored selectStack =
     let
       val coloredNodes = IntSet.foldl (fn (n, s) => IntSet.add(s, n)) IntSet.empty precolored
-      val colorTable = foldl (fn (n, m) => IntMap.insert(m, n, n)) IntMap.empty (IntSet.toList precolored)
+      val colorTable = foldl (fn (n, m) => IntMap.insert(m, n, n)) IntMap.empty (IntSet.listItems precolored)
       fun while_loop (selectStack, coloredNodes, colorTable, spilledNodes) =
           if Stack.isEmpty selectStack then (coloredNodes, colorTable, spilledNodes)
           else excludeUsedColors (selectStack, coloredNodes, colorTable, spilledNodes)
@@ -190,14 +190,14 @@ fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
 
       (*Transform output into the same format as Color.color's output*)
       val (coloredNodes, colorTable, spilledNodes) =  assignColors  adjList precolored selectStack
-      val coloredNodeLst = IntSet.toList coloredNodes
+      val coloredNodeLst = IntSet.listItems coloredNodes
       val coloredRegLst = map (fn (coloredNode) =>
                                valOf(Temp.Table.look(Frame.tempMap, IntMap.lookup(colorTable, coloredNode)))
                            ) coloredNodeLst
-      val zips = zip((IntSet.toList coloredNodes), coloredRegLst)
+      val zips = zip((IntSet.listItems coloredNodes), coloredRegLst)
       val allocation = foldl (fn ((temp, color), t) => Temp.Table.enter(t, temp, color)) Temp.Table.empty zips
     in
-      (allocation, IntSet.toList spilledNodes)
+      (allocation, IntSet.listItems spilledNodes)
     end
 
 
