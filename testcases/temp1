@@ -1,6 +1,6 @@
 let
 	var a := 1
-	function f(b) : int= b
+	function f(b:int) : int= b
 in
 	f(a)
 end

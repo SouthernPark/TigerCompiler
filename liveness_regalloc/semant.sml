@@ -460,7 +460,7 @@ struct
   fun transProg(exp:A.exp) =
       let
         val reset_frags = Tr.resetResult()
-        val tig_main_level = Tr.newLevel({parent=Tr.outermost, name=Temp.newlabel(),formals=[]})
+        val tig_main_level = Tr.newLevel({parent=Tr.outermost, name=Temp.newlabel(), formals=[]})
         val {exp, ty} = transExp (E.base_venv, E.base_tenv, NONE, tig_main_level) (exp)
         val proc_entry_exit = Tr.procEntryExit({level=tig_main_level, body=exp})
         val frags = Tr.getResult()

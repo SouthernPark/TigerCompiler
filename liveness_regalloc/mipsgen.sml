@@ -154,6 +154,7 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
           (* call *)
           | munchExp (T.CALL(T.NAME callee_label, args)) =
               (
+                print("argument length: " ^ Int.toString(List.length args) ^ "\n");
                 emit(A.OPER{
                             assem = "jal " ^ Symbol.name(callee_label) ^ "\n",
                             src = munchArgs(0, args),
@@ -166,12 +167,13 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
           | munchArgs (index, curr_arg::args) =
           let
             val formals = Frame.formals frame
+            val _ = print("formals length: " ^ Int.toString(List.length formals) ^ "\n")
+            val _ = print("frame name " ^ Frame.name frame ^ "\n")
           in
             case List.nth(formals, index) of 
                       Frame.InReg(temp) => (
                         let
                           val move_arg_stm = T.MOVE(T.TEMP(temp), curr_arg)
-                          val _ = print("in reg \n")
                         in
                           munchStm(move_arg_stm);
                           [munchExp(T.TEMP(temp))] @ munchArgs(index + 1, args)
@@ -180,9 +182,7 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
                     | Frame.InFrame(offset) => (
                         let
                           val pointer = T.BINOP(T.PLUS, T.TEMP(Frame.FP), T.CONST(offset))
-                          (* val _ = print("the offset is " ^ Int.toString(offset)) *)
                           val move_arg_stm = T.MOVE(T.MEM(pointer), curr_arg)
-                          val _ = print("in frame \n")
                         in
                           munchStm(move_arg_stm);
                           munchArgs(index + 1, args)
