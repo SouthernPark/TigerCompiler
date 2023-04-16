@@ -22,7 +22,6 @@ fun intToString (n:int) : string =
       else str
     end
 
-(* TODO: below is a fake implementation of maximal munch *)
 fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
     let val ilist = ref (nil: A.instr list)
         fun emit x= ilist := x :: !ilist
@@ -154,38 +153,42 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
                   }))
           (* call *)
           | munchExp (T.CALL(T.NAME callee_label, args)) =
-            let
-              val fp = T.TEMP Frame.SP (* new fp for the frame *)
-              val extra_arg_num = List.length args - 4
-              val offset = if extra_arg_num <= 0 then 0 else extra_arg_num * 4
-              val new_sp_stm = T.MOVE(T.TEMP Frame.SP, T.BINOP(T.PLUS, fp, T.CONST offset))
-              val old_sp_stm = T.MOVE(T.TEMP Frame.SP, fp)
-            in
               (
-                munchStm new_sp_stm; (* new sp *)
                 emit(A.OPER{
                             assem = "jal " ^ Symbol.name(callee_label) ^ "\n",
                             src = munchArgs(0, args),
                             dst = Frame.return_address @ Frame.return_values @ Frame.callersaves_reg @ Frame.args_reg,
                             jump = NONE
                     }); (* why dst ? the sub-rountine may use and change these registers *)
-                munchStm old_sp_stm; (* restore sp *)
                 Frame.V0 (* return value *)
               )
-            end
         and munchArgs (index, []) = []
           | munchArgs (index, curr_arg::args) =
-            let
-              val move_arg_stm = T.MOVE(T.TEMP(List.nth(Frame.args_reg, index)), curr_arg)
-              val arg_temp = T.TEMP((List.nth(Frame.args_reg, index)))
-              val move_sp_stm = T.MOVE(T.MEM(T.BINOP(T.PLUS, T.TEMP(Frame.SP), T.CONST(((index - 3) * 4)))), curr_arg)
-            in
-              if index < 4
-              (* use a0-a4 regs *)
-              then (munchStm(move_arg_stm); [munchExp arg_temp] @ munchArgs(index + 1, args))
-              (* extra on stack *)
-              else (munchStm(move_sp_stm); munchArgs(index + 1, args))
-            end
+          let
+            val formals = Frame.formals frame
+          in
+            case List.nth(formals, index) of 
+                      Frame.InReg(temp) => (
+                        let
+                          val move_arg_stm = T.MOVE(T.TEMP(temp), curr_arg)
+                          val _ = print("in reg \n")
+                        in
+                          munchStm(move_arg_stm);
+                          [munchExp(T.TEMP(temp))] @ munchArgs(index + 1, args)
+                        end
+                      )
+                    | Frame.InFrame(offset) => (
+                        let
+                          val pointer = T.BINOP(T.PLUS, T.TEMP(Frame.FP), T.CONST(offset))
+                          (* val _ = print("the offset is " ^ Int.toString(offset)) *)
+                          val move_arg_stm = T.MOVE(T.MEM(pointer), curr_arg)
+                          val _ = print("in frame \n")
+                        in
+                          munchStm(move_arg_stm);
+                          munchArgs(index + 1, args)
+                        end
+                      )
+          end   
     in
       munchStm stm;
       rev(!ilist)

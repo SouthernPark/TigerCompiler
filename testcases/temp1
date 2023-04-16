@@ -1,6 +1,6 @@
 let
 	var a := 1
-	function f() : int = ord("a")
+	function f(b) : int= b
 in
-f()
+	f(a)
 end
