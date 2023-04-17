@@ -113,7 +113,7 @@ fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP]
 
 (* procedure entry/exit sequences, adding jal labels *)
 fun procEntryExit3({name, formals, numLocalVars, curOffSet}, body) =
-                                    {prolog = (Symbol.name name) ^ ":\n", body = body, epilog = "jr $ra"}
+                                    {prolog = (Symbol.name name) ^ ":\n", body = body, epilog = "jr $ra\n"}
                                     (* for testing *)
                                     (* {prolog = "PROCEDURE " ^ (Symbol.name name) ^ "\n",
                                         body = body,
