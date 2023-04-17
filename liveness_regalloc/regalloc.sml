@@ -2,7 +2,7 @@ signature REG_ALLOC =
 sig
 structure Frame : FRAME
 type allocation = Frame.register Temp.Table.table
-val alloc : Assem.instr list * Frame.frame * allocation -> Assem.instr list * allocation
+val alloc : Assem.instr list * Frame.frame -> Assem.instr list * allocation
 end
 
 structure Reg_Alloc : REG_ALLOC =
@@ -58,19 +58,19 @@ fun rewriteProgram [] instructions _ newTemps = (instructions, newTemps)
 (*when conflict happens, use the color in newTemp set *)	
 fun mergeFn(val1:'a, val2:'a) = val2
 				 
-fun alloc (insts, frame, curAlloc) =
+fun alloc (insts, frame) =
     let
 	val (flowgraph as Flow.FGRAPH{control, def, use, ismove},nodelist) = MakeGraph.instrs2graph insts
 	val ((igraph as Liveness.IGRAPH{graph, tnode, gtemp, moves}), lomapfunc) = Liveness.interferenceGraph flowgraph
-	val (updateAlloc, spillList) = Color.color {interference=igraph,initial=curAlloc,spillCost = (fn x =>1), registers=Frame.registers}
+	val (updateAlloc, spillList) = Color.color {interference=igraph, initial=Frame.tempMap, spillCost=(fn x =>1), registers=Frame.registers}
 		
 	(*val nodeList = map tnode spillList*)
 	(*rewrite program to insert instructions, return new insts and new temp set*)	 
 	val (updateIns, newTemps) = rewriteProgram spillList insts frame Temp.Table.empty
 	(*union colored nodes with new temps*)						   
-	val newAlloc = IntBinaryMap.unionWith mergeFn (updateAlloc, newTemps)
+	(* val newAlloc = IntBinaryMap.unionWith mergeFn (updateAlloc, newTemps) *)
     in
-	if List.length(spillList) > 0 then (alloc(updateIns, frame, Frame.tempMap))
+	if List.length(spillList) > 0 then (alloc(updateIns, frame))
 	else (insts, updateAlloc)
     end
 end

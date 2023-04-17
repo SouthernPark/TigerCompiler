@@ -11,17 +11,17 @@ fun getsome (SOME x) = x
 fun emitproc out (F.PROC{body,frame}) =
     let val _ = print ("emit " ^ F.name frame ^ "\n")
         (* val _ = Printtree.printtree(out,body); *)
-	val stms = Canon.linearize body
+        val stms = Canon.linearize body
         (* val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
         val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
-	val instrs =   List.concat(map (G.codegen frame) stms')
+        val instrs =   List.concat(map (G.codegen frame) stms')
         val format0 = Assem.format(Temp.makestring)
         val add_live_regs_instrs = F.procEntryExit2(frame, instrs)
         val add_procedure = F.procEntryExit3(frame, add_live_regs_instrs)
         val final_instrs = #body(add_procedure)
         val prolog = #prolog(add_procedure)
         val epilog = #epilog(add_procedure)
-        val (modify_instrs, allocations) = Reg_Alloc.alloc(final_instrs, frame, F.tempMap)
+        val (modify_instrs, allocations) = Reg_Alloc.alloc(final_instrs, frame)
         val format = Assem.format(fn temp => valOf(Temp.Table.look(allocations, temp)))
         (* test for flowgraph and interference graph *)
         (* val _ = F.debugAllRegisters()
