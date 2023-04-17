@@ -45,10 +45,8 @@ fun getDegree (degree, node) = case Temp.Table.look (degree, node) of
 
 fun setDegree (degree, node, newDegree) = Temp.Table.enter (degree, node, newDegree)
 
-(* adjList: int to int_set map, does not contain adjcent nodes for precolored nodes to save space *)
-fun getAdjList initial nodes = foldl (fn (node, m) => case Temp.Table.look (initial, IGraph.getNodeID node) of
-                                                          SOME(_) => m (* precolored nodes *)
-                                                        | NONE => IntMap.insert (m, IGraph.getNodeID node, IntSet.fromList(IGraph.adj node))
+(* adjList: int to int_set map *)
+fun getAdjList initial nodes = foldl (fn (node, m) => IntMap.insert (m, IGraph.getNodeID node, IntSet.fromList(IGraph.adj node))
                                      ) IntMap.empty nodes
 
 (* both node1 -> node2, node2 -> node1 will be added into adj matrix *)
@@ -163,6 +161,11 @@ fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
       val K = IntSet.numItems precolored (* set K to the precolored machine registers *)
       val selectStack = Stack.empty
 
+      (* debug *)
+      val _ = print("nodes size " ^ Int.toString(List.length nodes) ^ "\n")
+      val _ = print("precolored size " ^ Int.toString(IntSet.numItems precolored) ^ "\n")
+      val _ = print("non precolored size " ^ Int.toString(IntSet.numItems initialTempSet) ^ "\n")
+
       (* make worklist *)
       val (spillWorklist, simplifyWorklist) = makeWorkList K degree initialTempSet
       val initialTempSet = IntSet.empty (* after make worklist, all nodes here should be removed *)
@@ -191,6 +194,10 @@ fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
 
       (*Transform output into the same format as Color.color's output*)
       val (coloredNodes, colorTable, spilledNodes) =  assignColors adjList precolored selectStack
+
+      val _ = print("coloredNodes size " ^ Int.toString(IntSet.numItems coloredNodes) ^ "\n")
+      val _ = print("spilledNodes size " ^ Int.toString(IntSet.numItems spilledNodes) ^ "\n")
+
       val coloredNodeLst = IntSet.listItems coloredNodes
       val coloredRegLst = map (fn (coloredNode) =>
                                valOf(Temp.Table.look(Frame.tempMap, IntMap.lookup(colorTable, coloredNode)))
