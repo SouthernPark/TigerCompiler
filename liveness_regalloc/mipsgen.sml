@@ -154,25 +154,15 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
                   }))
           (* call *)
           | munchExp (T.CALL(T.NAME callee_label, args)) =
-            let
-              val fp = T.TEMP Frame.SP (* new fp for the frame *)
-              val extra_arg_num = List.length args - 4
-              val offset = if extra_arg_num <= 0 then 0 else extra_arg_num * 4
-              val new_sp_stm = T.MOVE(T.TEMP Frame.SP, T.BINOP(T.PLUS, fp, T.CONST offset))
-              val old_sp_stm = T.MOVE(T.TEMP Frame.SP, fp)
-            in
               (
-                munchStm new_sp_stm; (* new sp *)
                 emit(A.OPER{
                             assem = "jal " ^ Symbol.name(callee_label) ^ "\n",
                             src = munchArgs(0, args),
                             dst = Frame.return_address @ Frame.return_values @ Frame.callersaves_reg @ Frame.args_reg,
                             jump = NONE
                     }); (* why dst ? the sub-rountine may use and change these registers *)
-                munchStm old_sp_stm; (* restore sp *)
                 Frame.V0 (* return value *)
               )
-            end
         and munchArgs (index, []) = []
           | munchArgs (index, curr_arg::args) =
             let
