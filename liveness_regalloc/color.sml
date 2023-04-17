@@ -35,7 +35,7 @@ structure IntSet = RedBlackSetFn(struct
 
 type allocation = Frame.register Temp.Table.table
 
-(* return: nodeID to degree table, does not contain degree for precolored nodes to save space *)
+(* return: nodeID to degree table *)
 fun getDegreeList initial nodes = foldl (fn (node, t) => Temp.Table.enter (t, IGraph.getNodeID node, List.length(IGraph.adj node))
                                         ) Temp.Table.empty nodes
 
