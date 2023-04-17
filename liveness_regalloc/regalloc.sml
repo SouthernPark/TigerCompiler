@@ -70,7 +70,7 @@ fun alloc (insts, frame, curAlloc) =
 	(*union colored nodes with new temps*)						   
 	val newAlloc = IntBinaryMap.unionWith mergeFn (updateAlloc, newTemps)
     in
-	if List.length(spillList) > 0 then (alloc(updateIns, frame, newAlloc))
+	if List.length(spillList) > 0 then (alloc(updateIns, frame, Frame.tempMap))
 	else (insts, updateAlloc)
     end
 end

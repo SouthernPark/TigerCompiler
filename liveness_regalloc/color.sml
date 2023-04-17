@@ -85,15 +85,32 @@ fun Adjacent adjList selectStack node = let val nodeAdjSet = IntMap.lookup(adjLi
                                         end
 
 (* return new degree, new simplifyWorklist, new spillWorkList and select stack  after simplified *)
-fun simplify K degree adjList spillWorkList simplifyWorklist selectStack =
+(* fun simplify K degree adjList spillWorkList simplifyWorklist selectStack =
     IntSet.foldl (fn (simplifyNode, (degree, spillWorkList, newSimplifyWorklist, selectStack)) =>
                      let
                        val selectStack = Stack.push(selectStack, simplifyNode)
                        val (degree, spillWorkList, newSimplifyWorkList) = IntSet.foldl (decrementDegree K) (degree, spillWorkList, IntSet.empty) (Adjacent adjList selectStack simplifyNode)
+                       val _ = print("simplify spillWorklist size " ^ Int.toString(IntSet.numItems spillWorkList) ^ "\n")
+                       val _ = print("simplify newSimplifyWorkList size " ^ Int.toString(IntSet.numItems newSimplifyWorkList) ^ "\n")
                      in
                        (degree, spillWorkList, newSimplifyWorklist, selectStack)
                      end
-                 ) (degree, spillWorkList, IntSet.empty, selectStack) simplifyWorklist
+                 ) (degree, spillWorkList, IntSet.empty, selectStack) simplifyWorklist *)
+
+fun simplify K degree adjList spillWorkList simplifyWorklist selectStack =
+    let
+      fun help (simplifyNode, (curr_degree, curr_spill, curr_simplify, curr_stack)) = 
+        let
+          val new_stack = Stack.push(curr_stack, simplifyNode)
+          val neighbours = Adjacent adjList curr_stack simplifyNode
+          val (new_degree, new_spill, new_simplify) = IntSet.foldl (decrementDegree K) (curr_degree, curr_spill, curr_simplify) neighbours
+        in
+          (new_degree, new_spill, new_simplify, new_stack) 
+        end
+    in
+      IntSet.foldl help (degree, spillWorkList, IntSet.empty, selectStack) simplifyWorklist
+    end
+
 
 fun selectSpill selectStack adjList spillWorkList simplifyWorkList =
     let
@@ -170,6 +187,9 @@ fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
       val (spillWorklist, simplifyWorklist) = makeWorkList K degree initialTempSet
       val initialTempSet = IntSet.empty (* after make worklist, all nodes here should be removed *)
 
+      val _ = print("makeworklist spillworklist size " ^ Int.toString(IntSet.numItems spillWorklist) ^ "\n")
+      val _ = print("makeworklist simplifyWorklist size " ^ Int.toString(IntSet.numItems simplifyWorklist) ^ "\n")
+
       (* loop until spillWorkList and simplifyWorkList is empty*)
       fun repeat (degree, adjList, simplifyWorklist, spillWorklist, selectStack) =
           if IntSet.isEmpty(simplifyWorklist) andalso IntSet.isEmpty(spillWorklist) then (simplifyWorklist, spillWorklist, selectStack)
@@ -191,6 +211,8 @@ fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
             end
 
       val (simplifyWorklist, spillWorklist, selectStack) = repeat (degree, adjList, simplifyWorklist, spillWorklist, selectStack)
+
+      val _ = print("selectStack size " ^ Int.toString(Stack.size selectStack) ^ "\n")
 
       (*Transform output into the same format as Color.color's output*)
       val (coloredNodes, colorTable, spilledNodes) =  assignColors adjList precolored selectStack
