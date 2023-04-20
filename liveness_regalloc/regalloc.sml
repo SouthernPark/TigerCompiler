@@ -45,21 +45,23 @@ fun rewriteProgram [] instructions _ newTemps = (instructions, newTemps)
 
 	(*find def and use of spill nodes in the input insts*)
 	(*insert store to memory after each dst use and insert load from memory before each src use of spill node*)
-	fun findDefandUse (ins as Assem.OPER{assem=_, dst=dstlist,src=srclist,jump=_}) =
+	fun findDefandUse (ins as Assem.OPER{assem=assem, dst=dstlist,src=srclist,jump=jump}) =
 	    if List.exists (fn y => y = spillNodeID) dstlist
 	    then (let val newtemp = Temp.newtemp()
-		  in  [([ins, hd (genStoreIns newtemp)],[(newtemp,"$t"^Int.toString(newtemp))])] end)
+                      val newDstList = map (fn n => if n=spillNodeID then newtemp else n) dstlist
+		  in  [([Assem.OPER{assem=assem, dst=newDstList,src=srclist,jump=jump}, hd (genStoreIns newtemp)],[(newtemp,"$t"^Int.toString(newtemp))])] end)
 	    else if List.exists (fn y => y = spillNodeID) srclist
 	    then (let val newtemp = Temp.newtemp()
-		  in [([hd (genLoadIns newtemp), ins],[(newtemp,"$t"^Int.toString(newtemp))])] end)
+                      val newSrcList = map (fn n => if n=spillNodeID then newtemp else n) srclist
+		  in [([hd (genLoadIns newtemp), Assem.OPER{assem=assem, dst=dstlist,src=newSrcList,jump=jump}],[(newtemp,"$t"^Int.toString(newtemp))])] end)
 	    else [([ins],[])]
-	  | findDefandUse (ins as Assem.MOVE{assem=_, dst=dst,src=src}) =
+	  | findDefandUse (ins as Assem.MOVE{assem=assem, dst=dst,src=src}) =
 	    if dst = spillNodeID
 	    then (let val newtemp = Temp.newtemp()
-		  in [([ins, hd (genStoreIns newtemp)],[(newtemp,"$t"^Int.toString(newtemp))])] end)
+		  in [([Assem.MOVE{assem=assem, dst=newtemp,src=src}, hd (genStoreIns newtemp)],[(newtemp,"$t"^Int.toString(newtemp))])] end)
 	    else if src = spillNodeID
 	    then (let val newtemp = Temp.newtemp()
-		  in [([hd (genLoadIns newtemp), ins],[(newtemp,"$t"^Int.toString(newtemp))])] end)
+		  in [([hd (genLoadIns newtemp), Assem.MOVE{assem=assem, dst=newtemp,src=newtemp}],[(newtemp,"$t"^Int.toString(newtemp))])] end)
 	    else [([ins], [])]
 	  | findDefandUse ins = [([ins], [])]
 
@@ -91,7 +93,7 @@ fun alloc (insts, frame) =
 	(*rewrite program to insert instructions, return new insts and new temp set*)
 	val (updateIns, newTemps) = rewriteProgram spillList insts frame Temp.Table.empty
 
-
+        val () = print("test1\n")
 
 	(*union colored nodes with new temps*)
 	(* val newAlloc = IntBinaryMap.unionWith mergeFn (updateAlloc, newTemps) *)
