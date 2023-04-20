@@ -127,7 +127,7 @@ fun selectSpill selectStack adjList spillWorkList simplifyWorkList =
       (IntSet.add(simplifyWorkList, m), IntSet.subtract(spillWorkList, m))
     end
 
-fun assignColors adjList precolored selectStack =
+fun assignColors adjList precolored kcolors selectStack =
     let
       val coloredNodes = IntSet.foldl (fn (n, s) => IntSet.add(s, n)) IntSet.empty precolored
       val colorTable = foldl (fn (n, m) => IntMap.insert(m, n, n)) IntMap.empty (IntSet.listItems precolored)
@@ -138,7 +138,7 @@ fun assignColors adjList precolored selectStack =
           let
             val nodeid = valOf(Stack.top selectStack)
             val selectStack = Stack.pop selectStack
-            val ok_colors = precolored
+            val ok_colors = kcolors
             val neighbours = IntMap.lookup (adjList, nodeid)
 
             fun exclude (curr_nodeid, okcolors) =
@@ -172,38 +172,38 @@ fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
       val adjList = getAdjList initial nodes (* nodeID to nodeID set map *)
       val adjMatrix = getAdjMatrix nodes (* (nodeID, nodeID) set *)
       val initialTempSet = getInitialTemps initial nodes (* temps that are not precolored, not machine regs *)
-      val precolored = IntSet.difference (nodeSet, initialTempSet)
-      val K = IntSet.numItems precolored (* set K to the precolored machine registers *)
+      val precolored = IntSet.difference (nodeSet, initialTempSet) (* temps that are machine regs *)
+      val kcolors = IntSet.fromList(Frame.kregs) (* available colors *)
+      val K = IntSet.numItems(kcolors) (* set K to the size of kcolors *)
       val selectStack = Stack.empty
 
       (* make worklist *)
       val (spillWorklist, simplifyWorklist) = makeWorkList K degree initialTempSet
       val initialTempSet = IntSet.empty (* after make worklist, all nodes here should be removed *)
+        
+      fun repeat (degree, adjList, simplifyWorklist, spillWorklist, selectStack) = 
+        if IntSet.numItems(simplifyWorklist) > 0 (* simplify *)
+        then (
+          let
+            val (degree', spillWorklist', simplifyWorklist', selectStack') = simplify K degree adjList spillWorklist simplifyWorklist selectStack
+          in
+            repeat(degree', adjList, simplifyWorklist', spillWorklist', selectStack')
+          end
+        )
+        else if IntSet.numItems(spillWorklist) > 0 (* select spill *)
+        then (
+          let
+            val (simplifyWorklist', spillWorklist') = selectSpill selectStack adjList spillWorklist simplifyWorklist
+          in
+            repeat(degree, adjList, simplifyWorklist', spillWorklist', selectStack)
+          end
+        )
+        else selectStack
 
-      (* loop until spillWorkList and simplifyWorkList is empty*)
-      fun repeat (degree, adjList, simplifyWorklist, spillWorklist, selectStack) =
-          if IntSet.isEmpty(simplifyWorklist) andalso IntSet.isEmpty(spillWorklist) then (simplifyWorklist, spillWorklist, selectStack)
-          else
-            let
-              (* simplify *)
-              val (degree, spillWorkList, simplifyWorklist, selectStack) =
-                  if not (IntSet.isEmpty(simplifyWorklist))
-                  then simplify K degree adjList spillWorklist simplifyWorklist selectStack
-                  else (degree, spillWorklist, simplifyWorklist, selectStack)
-
-              (* selectSpill *)
-              val (simplifyWorkList', spillWorkList') = if (IntSet.isEmpty(spillWorkList))
-                                                      then (simplifyWorklist, spillWorkList)
-                                                      else selectSpill selectStack adjList spillWorklist simplifyWorklist
-              (* val (simplifyWorkList, spillWorkList) = selectSpill selectStack adjList spillWorklist simplifyWorklist *)
-            in
-              repeat(degree, adjList, simplifyWorkList', spillWorkList', selectStack)
-            end
-
-      val (simplifyWorklist, spillWorklist, selectStack) = repeat (degree, adjList, simplifyWorklist, spillWorklist, selectStack)
+      val selectStack = repeat (degree, adjList, simplifyWorklist, spillWorklist, selectStack)
 
       (*Transform output into the same format as Color.color's output*)
-      val (coloredNodes, colorTable, spilledNodes) =  assignColors adjList precolored selectStack
+      val (coloredNodes, colorTable, spilledNodes) =  assignColors adjList precolored kcolors selectStack
 
       val coloredNodeLst = IntSet.listItems coloredNodes
       val coloredRegLst = map (fn (coloredNode) =>
