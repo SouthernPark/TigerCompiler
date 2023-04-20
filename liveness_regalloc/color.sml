@@ -191,7 +191,7 @@ fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
         if IntSet.numItems(simplifyWorklist) > 0 (* simplify *)
         then (
           let
-            val (degree', spillWorklist', simplifyWorklist', selectStack') = simplify K degree adjList spillWorklist simplifyWorklist selectStack
+            val (degree', spillWorklist', simplifyWorklist', selectStack') = simplify K initial degree adjList spillWorklist simplifyWorklist selectStack
           in
             repeat(degree', adjList, simplifyWorklist', spillWorklist', selectStack')
           end
