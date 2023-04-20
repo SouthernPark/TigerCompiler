@@ -159,7 +159,7 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
                             assem = "jal " ^ Symbol.name(callee_label) ^ "\n",
                             src = munchArgs(0, args),
                             dst = Frame.return_address @ Frame.return_values @ Frame.callersaves_reg @ Frame.args_reg,
-                            jump = NONE
+                            jump = SOME([callee_label])
                     }); (* why dst ? the sub-rountine may use and change these registers *)
                 Frame.V0 (* return value *)
               )

@@ -20,7 +20,6 @@ tree.sml
 temp.sig
 temp.sml
 printtree.sml
-regalloc.sml
 stack.sml
 canon.sml
 assem.sml
@@ -34,6 +33,7 @@ makegraph.sml
 funcgraph.sig
 funcgraph.sml
 color.sml
+regalloc.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/basis.cm

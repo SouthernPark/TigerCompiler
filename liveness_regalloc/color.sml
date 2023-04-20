@@ -74,7 +74,7 @@ fun makeWorkList K degree initialTemps = IntSet.foldl (fn (node, (spillWorklist,
 (* return new degree and  new simplifyWorklist after simplified *)
 fun decrementDegree K initial (node, (degree, spillWorkList, newSimplifyWorkList)) =
     case Temp.Table.look(initial, node) of
-        SOME(_) => (degree, spillWorkList, newSimplifyWorkList)
+        SOME(_) => ((if IntSet.member(spillWorkList, node) then print("=====") else ());(degree, spillWorkList, newSimplifyWorkList))
       | NONE => let val d = getDegree (degree, node)
                     val degree = setDegree (degree, node, d - 1)
                 in
@@ -181,6 +181,7 @@ fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
       val precolored = IntSet.difference (nodeSet, initialTempSet) (* temps that are machine regs *)
       val kcolors = IntSet.fromList(Frame.kregs) (* available colors *)
       val K = IntSet.numItems(kcolors) (* set K to the size of kcolors *)
+      val () = print ("K: " ^ Int.toString(K) ^ "\n")
       val selectStack = Stack.empty
 
       (* make worklist *)
@@ -191,26 +192,32 @@ fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
         if IntSet.numItems(simplifyWorklist) > 0 (* simplify *)
         then (
           let
-            val (degree', spillWorklist', simplifyWorklist', selectStack') = simplify K initial degree adjList spillWorklist simplifyWorklist selectStack
+            val (degree, spillWorklist, simplifyWorklist, selectStack) = simplify K initial degree adjList spillWorklist simplifyWorklist selectStack
           in
-            repeat(degree', adjList, simplifyWorklist', spillWorklist', selectStack')
+            repeat(degree, adjList, simplifyWorklist, spillWorklist, selectStack)
           end
         )
         else if IntSet.numItems(spillWorklist) > 0 (* select spill *)
         then (
           let
-            val (simplifyWorklist', spillWorklist') = selectSpill selectStack adjList spillWorklist simplifyWorklist
+            val (simplifyWorklist, spillWorklist) = selectSpill selectStack adjList spillWorklist simplifyWorklist
           in
-            repeat(degree, adjList, simplifyWorklist', spillWorklist', selectStack)
+            repeat(degree, adjList, simplifyWorklist, spillWorklist, selectStack)
           end
         )
         else selectStack
-
 
       val selectStack = repeat (degree, adjList, simplifyWorklist, spillWorklist, selectStack)
 
       (*Transform output into the same format as Color.color's output*)
       val (coloredNodes, colorTable, spilledNodes) =  assignColors adjList precolored kcolors selectStack
+      val () = print("total size: " ^ Int.toString(List.length(nodes)) ^ "\n")
+      val () = print("colored size: " ^ Int.toString(IntSet.numItems(coloredNodes)) ^ "\n")
+      (*val () = print ("spilledNodes size: " ^ Int.toString(IntSet.numItems(spilledNodes)) ^ "\n")
+      fun printString(t) = print (Int.toString(t) ^ "\n")
+      val () = List.app printString (IntSet.listItems spilledNodes)*)
+
+
 
       val coloredNodeLst = IntSet.listItems coloredNodes
       val coloredRegLst = map (fn (coloredNode) =>
