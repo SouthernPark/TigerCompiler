@@ -21,10 +21,10 @@ fun emitproc out (F.PROC{body,frame}) =
         val final_instrs = #body(add_procedure)
         val prolog = #prolog(add_procedure)
         val epilog = #epilog(add_procedure)
-        val (modify_instrs, allocations) = Reg_Alloc.alloc(final_instrs, frame)
+        val (final_instrs, allocations) = Reg_Alloc.alloc(final_instrs, frame)
         val () = print "test2\n"
         val format = Assem.format(fn temp => case Temp.Table.look(allocations, temp) of SOME(v)  => v
-                                                                                      | NONE => (print ("no allc for the temp\n");raise ErrorMsg.Error))
+                                                                                      | NONE => (print ("no allc for the temp: "^ Int.toString(temp) ^"\n");raise ErrorMsg.Error))
         val () = print "test3\n"
         (* test for flowgraph and interference graph *)
         (* val _ = F.debugAllRegisters()

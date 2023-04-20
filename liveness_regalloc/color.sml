@@ -153,7 +153,7 @@ fun assignColors adjList precolored kcolors selectStack =
                 else okcolors
 
             val ok_colors = IntSet.foldl exclude ok_colors neighbours
-            (*val () = print ("ok colors size: " ^ Int.toString(IntSet.numItems(ok_colors)) ^ "\n")*)
+            val () = print ("current assign temp " ^ Int.toString(nodeid) ^ "ok colors size: " ^ Int.toString(IntSet.numItems(ok_colors)) ^ "\n")
             fun assign () = if IntSet.isEmpty ok_colors then (coloredNodes, colorTable, IntSet.add(spilledNodes, nodeid))
                             else (IntSet.add(coloredNodes, nodeid), IntMap.insert(colorTable, nodeid, List.nth(IntSet.listItems ok_colors, 0)), spilledNodes)
             val (coloredNodes, colorTable, spilledNodes) = assign ()
