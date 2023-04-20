@@ -2,17 +2,21 @@
 #+DATE <2023-04>
 #+TODO: TODO INPROCESS UNSURE DONE
 
-Canonize + instruction selection
+Liveness Analysis + Register Allocation
 
 * grader read
 + We are using funcgraph to implement flowgraph and interference graph instead of original graph provided by textbook
-+
++ In color.sml, the available registers that can be assigned are a0-a1, v0-v1, t0-t9, s0-s7
++ In color.sml, we implemented simpilfy, selectSpill and assignColors step
++ If there are any spill nodes after assigning colors, we will rewrite the program and repeat liveness analysis and coloring (in regalloc.sml)
 
 * new file added
 
 | name          | description                                         |
 | makegraph.sml | need to implement "instrs2graph" method             |
 | liveness.sml  | need to implement "interferenceGraph" and "show"    |
+| color.sml     | need to implement "color"                           |
+| regalloc.sml  | need to implement "alloc"                           |
 
 * todo
 
@@ -20,9 +24,9 @@ Canonize + instruction selection
 done: implement MakeGraph structure (add nodes, edges to make a complete flowgraph)
 done: implement Liveness structure (computer live_in and live_out map for each node, make an interference graph)
 
-
-
 ** Reg Allocation
+done: implement Color structure (repeat simpilfy and selectSpill, pop nodes from the selectStack and assign colors, record spill nodes)
+done: implement Reg_Alloc structure (make flowgraph, make interference_graph, assign colors, rewrite program if there are any spill nodes, repeat all the steps.)
 
 * issue
 
@@ -35,8 +39,5 @@ val precolored = IntSet.difference (nodeSet, initialTempSet)
 
 Nodes in the graph - intial temps that are not colored
 
-rather than set it to the 32 machine registers, is this correct ?
-
-I set K to be the length of precolored nodes, is it correct ?
 
 
