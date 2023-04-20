@@ -36,17 +36,21 @@ structure IntSet = RedBlackSetFn(struct
 type allocation = Frame.register Temp.Table.table
 
 (* return: nodeID to degree table *)
-fun getDegreeList initial nodes = foldl (fn (node, t) => Temp.Table.enter (t, IGraph.getNodeID node, List.length(IGraph.adj node))
+fun getDegreeList initial nodes = foldl (fn (node, t) => case Temp.Table.look (initial, IGraph.getNodeID node) of
+                                                             SOME(_) => t
+                                                           | NONE => Temp.Table.enter (t, IGraph.getNodeID node, List.length(IGraph.adj node))
                                         ) Temp.Table.empty nodes
 
 fun getDegree (degree, node) = case Temp.Table.look (degree, node) of
                                    SOME(d) => d
-                                 | NONE => (print "We should always find the degree of a temp\n";raise ErrorMsg.Error)
+                                 | NONE => (print ("We should always find the degree of a temp: " ^ valOf(Temp.Table.look(Frame.tempMap, node)) ^"\n"); raise ErrorMsg.Error)
 
 fun setDegree (degree, node, newDegree) = Temp.Table.enter (degree, node, newDegree)
 
 (* adjList: int to int_set map *)
-fun getAdjList initial nodes = foldl (fn (node, m) => IntMap.insert (m, IGraph.getNodeID node, IntSet.fromList(IGraph.adj node))
+fun getAdjList initial nodes = foldl (fn (node, m) => case Temp.Table.look(initial, IGraph.getNodeID node) of
+                                                          SOME(_) => m
+                                                        | NONE => IntMap.insert (m, IGraph.getNodeID node, IntSet.fromList(IGraph.adj node))
                                      ) IntMap.empty nodes
 
 (* both node1 -> node2, node2 -> node1 will be added into adj matrix *)
@@ -68,13 +72,15 @@ fun makeWorkList K degree initialTemps = IntSet.foldl (fn (node, (spillWorklist,
                                                       ) (IntSet.empty, IntSet.empty) initialTemps
 
 (* return new degree and  new simplifyWorklist after simplified *)
-fun decrementDegree K (node, (degree, spillWorkList, newSimplifyWorkList)) =
-    let val d = getDegree (degree, node)
-        val degree = setDegree (degree, node, d - 1)
-    in
-      if d = K then (degree, IntSet.subtract(spillWorkList, node), IntSet.add(newSimplifyWorkList, node))
-      else (degree, spillWorkList, newSimplifyWorkList)
-    end
+fun decrementDegree K initial (node, (degree, spillWorkList, newSimplifyWorkList)) =
+    case Temp.Table.look(initial, node) of
+        SOME(_) => (degree, spillWorkList, newSimplifyWorkList)
+      | NONE => let val d = getDegree (degree, node)
+                    val degree = setDegree (degree, node, d - 1)
+                in
+                  if d = K then (degree, IntSet.subtract(spillWorkList, node), IntSet.add(newSimplifyWorkList, node))
+                  else (degree, spillWorkList, newSimplifyWorkList)
+                end
 
 
 fun Adjacent adjList selectStack node = let val nodeAdjSet = IntMap.lookup(adjList, node)
@@ -95,15 +101,15 @@ fun Adjacent adjList selectStack node = let val nodeAdjSet = IntMap.lookup(adjLi
                      end
                  ) (degree, spillWorkList, IntSet.empty, selectStack) simplifyWorklist *)
 
-fun simplify K degree adjList spillWorkList simplifyWorklist selectStack =
+fun simplify K initial degree adjList spillWorkList simplifyWorklist selectStack =
     let
-      fun help (simplifyNode, (curr_degree, curr_spill, curr_simplify, curr_stack)) = 
+      fun help (simplifyNode, (curr_degree, curr_spill, curr_simplify, curr_stack)) =
         let
           val new_stack = Stack.push(curr_stack, simplifyNode)
           val neighbours = Adjacent adjList curr_stack simplifyNode
-          val (new_degree, new_spill, new_simplify) = IntSet.foldl (decrementDegree K) (curr_degree, curr_spill, curr_simplify) neighbours
+          val (new_degree, new_spill, new_simplify) = IntSet.foldl (decrementDegree K initial) (curr_degree, curr_spill, curr_simplify) neighbours
         in
-          (new_degree, new_spill, new_simplify, new_stack) 
+          (new_degree, new_spill, new_simplify, new_stack)
         end
     in
       IntSet.foldl help (degree, spillWorkList, IntSet.empty, selectStack) simplifyWorklist
@@ -180,8 +186,8 @@ fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
       (* make worklist *)
       val (spillWorklist, simplifyWorklist) = makeWorkList K degree initialTempSet
       val initialTempSet = IntSet.empty (* after make worklist, all nodes here should be removed *)
-        
-      fun repeat (degree, adjList, simplifyWorklist, spillWorklist, selectStack) = 
+
+      fun repeat (degree, adjList, simplifyWorklist, spillWorklist, selectStack) =
         if IntSet.numItems(simplifyWorklist) > 0 (* simplify *)
         then (
           let
@@ -199,6 +205,7 @@ fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
           end
         )
         else selectStack
+
 
       val selectStack = repeat (degree, adjList, simplifyWorklist, spillWorklist, selectStack)
 

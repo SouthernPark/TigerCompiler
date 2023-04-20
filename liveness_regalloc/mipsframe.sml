@@ -72,7 +72,7 @@ fun zip ([], []) = []
   | zip ((a1::l1), (a2::l2)) = (a1, a2) :: zip(l1, l2)
 
 fun createTempMap () =
-    let 
+    let
         val temp_color = zip (allregs, registers)
     in
       foldl (fn ((temp, color), m) => Temp.Table.enter(m, temp, color)) Temp.Table.empty temp_color
