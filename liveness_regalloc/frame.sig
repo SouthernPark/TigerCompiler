@@ -15,6 +15,7 @@ sig type frame
     val args_reg : Temp.temp list
     val return_address : Temp.temp list
     val return_values : Temp.temp list
+    val kregs : Temp.temp list
 
     val wordsize : int
     val newFrame : {name: Temp.label, formals: bool list} -> frame

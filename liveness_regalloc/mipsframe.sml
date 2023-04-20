@@ -60,8 +60,11 @@ val return_values = [V0, V1]
 
 val registers = ["$zero", "$at", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3", "$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7", "$t8", "$t9", "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$k0", "$k1", "$gp", "$sp", "$fp", "$ra"]
 
-val alltemps = [ZERO, AT] @ return_values @ args_reg @ callersaves_reg @ calleesaves_reg @ [K0, K1] @ [GP, SP, FP, RA]
-fun debugAllRegisters () = (foldl (fn (t, _) => (print(Int.toString(t) ^ " "); 0)) 0 alltemps; print("\n"))
+val allregs = [ZERO, AT] @ return_values @ args_reg @ callersaves_reg @ calleesaves_reg @ [K0, K1] @ [GP, SP, FP, RA]
+fun debugAllRegisters () = (foldl (fn (t, _) => (print(Int.toString(t) ^ " "); 0)) 0 allregs; print("\n"))
+
+(* registers that can be assigned to any temps *)
+val kregs = return_values @ args_reg @ callersaves_reg @ calleesaves_reg
 
 fun zip ([], []) = []
   | zip ([], l) = []
@@ -70,7 +73,7 @@ fun zip ([], []) = []
 
 fun createTempMap () =
     let 
-        val temp_color = zip (alltemps, registers)
+        val temp_color = zip (allregs, registers)
     in
       foldl (fn ((temp, color), m) => Temp.Table.enter(m, temp, color)) Temp.Table.empty temp_color
     end
