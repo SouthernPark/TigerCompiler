@@ -13,7 +13,7 @@ type allocation = Frame.register Temp.Table.table
 fun flatmap f xs = List.concat(List.map f xs)
 
 fun unzip [] l1 l2 = (l1, l2)
-  | unzip ((a1,a2)::l) l1 l2 = unzip l (a1 @ l1) (a2 @ l2)
+  | unzip ((a1,a2)::l) l1 l2 = unzip l (l1 @ a1) (l2 @ a2)
 
 
 fun rewriteProgram [] instructions _ newTemps = (instructions, newTemps)

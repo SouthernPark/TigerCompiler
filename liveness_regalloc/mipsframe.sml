@@ -64,7 +64,7 @@ val allregs = [ZERO, AT] @ return_values @ args_reg @ callersaves_reg @ calleesa
 fun debugAllRegisters () = (foldl (fn (t, _) => (print(Int.toString(t) ^ " "); 0)) 0 allregs; print("\n"))
 
 (* registers that can be assigned to any temps *)
-val kregs = return_values @ args_reg @ callersaves_reg @ calleesaves_reg
+val kregs = return_values @ args_reg @ calleesaves_reg @ callersaves_reg
 
 fun zip ([], []) = []
   | zip ([], l) = []
@@ -112,7 +112,7 @@ fun string(l:Temp.label, s:string) = Symbol.name(l) ^ ": .asciiz \"" ^ String.to
 
 (* temporaries zero, return-address, stack-pointer, and all the
     callee-saves registers are still live at the end of the function *)
-fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP] @ calleesaves_reg, dst=[], jump=SOME[]}]
+fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="last assem\n", src =[ZERO,RA,SP] @ calleesaves_reg, dst=[], jump=SOME[]}]
 
 (* procedure entry/exit sequences, adding jal labels *)
 fun procEntryExit3({name, formals, numLocalVars, curOffSet}, body) =
