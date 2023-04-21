@@ -73,7 +73,8 @@ fun zip ([], []) = []
 
 fun createTempMap () =
     let
-        val temp_color = zip (allregs, registers)
+      val temp_color = zip (allregs, registers)
+      val () = app (fn (temp, color) => print("temp " ^ Int.toString(temp) ^ " : color " ^ color ^ "\n")) temp_color
     in
       foldl (fn ((temp, color), m) => Temp.Table.enter(m, temp, color)) Temp.Table.empty temp_color
     end
@@ -112,7 +113,27 @@ fun string(l:Temp.label, s:string) = Symbol.name(l) ^ ": .asciiz \"" ^ String.to
 
 (* temporaries zero, return-address, stack-pointer, and all the
     callee-saves registers are still live at the end of the function *)
-fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="last assem\n", src =[ZERO,RA,SP] @ calleesaves_reg, dst=[], jump=SOME[]}]
+
+fun procEntryExit1(frame, body) = foldl (fn (callee_reg, ans_lst) =>
+                                            let
+                                              val newTemp = Temp.newtemp()
+                                              fun genStoreIns ()  = Assem.OPER{assem="move `d0, `s0\n",
+                                                                               src =[callee_reg],
+                                                                               dst=[newTemp],
+                                                                               jump=NONE}
+                                              fun genLoadIns () = Assem.OPER{assem="move `d0, `s0\n",
+                                                                             src =[newTemp],
+                                                                             dst=[callee_reg],
+                                                                             jump=NONE}
+
+                                            in
+                                              [genStoreIns ()] @ ans_lst @ [genLoadIns ()]
+                                            end
+                                        ) body calleesaves_reg
+
+
+
+fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP], dst=[], jump=SOME[]}]
 
 (* procedure entry/exit sequences, adding jal labels *)
 fun procEntryExit3({name, formals, numLocalVars, curOffSet}, body) =

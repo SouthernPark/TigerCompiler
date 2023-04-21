@@ -1,0 +1,133 @@
+L119: .asciiz "\n"
+L113: .asciiz " ."
+L112: .asciiz " O"
+L106:
+move t462, t285
+move t461, t284
+move t460, t283
+move t459, t282
+move t458, t281
+move t457, t280
+move t456, t279
+move t455, t278
+L123:
+li t429, 0
+lw t433, 0(t290)
+lw t432, -4(t433)
+li t434, 1
+sub t431, t432, t434
+move t430, t431
+ble t429, t430, L121
+L107:
+la t435, L119
+move t264, t435
+jal L74
+move t262, t262
+j L122
+L120:
+addi t436, t429, 1
+move t429, t436
+L121:
+li t427, 0
+lw t439, 0(t290)
+lw t438, -4(t439)
+li t440, 1
+sub t437, t438, t440
+move t428, t437
+ble t427, t428, L118
+L108:
+la t441, L119
+move t264, t441
+jal L74
+blt t429, t430, L120
+L124:
+j L107
+L117:
+addi t442, t427, 1
+move t427, t442
+L118:
+lw t444, 0(t290)
+lw t443, -8(t444)
+move t424, t443
+move t425, t422
+li t445, 0
+blt t425, t445, L109
+L110:
+li t448, 1
+sub t447, t424, t448
+lw t446, 0(t447)
+bge t425, t446, L109
+L111:
+li t452, 4
+mul t451, t425, t452
+add t450, t424, t451
+lw t449, 0(t450)
+beq t449, t423, L114
+L115:
+la t453, L113
+move t426, t453
+L116:
+move t264, t426
+jal L74
+blt t427, t428, L117
+L125:
+j L108
+L109:
+li t264, 1
+jal exit
+j L111
+L114:
+la t454, L112
+move t426, t454
+j L116
+L122:
+move t278, t455
+move t279, t456
+move t280, t457
+move t281, t458
+move t282, t459
+move t283, t460
+move t284, t461
+move t285, t462
+last assem
+jr $ra
+L105:
+move t477, t285
+move t476, t284
+move t475, t283
+move t474, t282
+move t473, t281
+move t472, t280
+move t471, t279
+move t470, t278
+L127:
+li t464, 8
+sw t464, -4(t290)
+addi t465, t290, -8
+move t463, t465
+lw t467, -4(t290)
+addi t466, t467, 1
+move t264, t466
+li t265, 0
+jal initArray
+move t421, t262
+lw t468, -4(t290)
+sw t468, 0(t421) 
+addi t469, t421, 4
+move t421, t469
+sw t421, 0(t463) 
+move t264, t290
+jal L106
+move t262, t262
+j L126
+L126:
+move t278, t470
+move t279, t471
+move t280, t472
+move t281, t473
+move t282, t474
+move t283, t475
+move t284, t476
+move t285, t477
+last assem
+jr $ra

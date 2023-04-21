@@ -25,6 +25,7 @@ sig type frame
     val externalCall : string * Tree.exp list -> Tree.exp
     (* output of string is used in data segment assembly, diff ISA has diff def, that's why we put it here *)
     val string : Temp.label * string -> string
+    val procEntryExit1 : frame * Assem.instr list -> Assem.instr list
     val procEntryExit2 : frame * Assem.instr list -> Assem.instr list
     val procEntryExit3 : frame * Assem.instr list -> {prolog: string, body : Assem.instr list, epilog: string}
     val debugAllRegisters : unit -> unit

@@ -1,0 +1,33 @@
+L19: .asciiz "\n"
+L18:
+L21:
+la $v0, L19
+move $a0, $v0
+jal L0
+move $v0, $v0
+j L20
+L20:
+last assem
+jr $ra
+L17:
+L23:
+li $v0, 8
+sw $v0, -4($fp)
+lw $v0, -4($fp)
+addi $v0, $v1, 1
+move $a0, $v0
+li $a1, 0
+jal initArray
+move $v1, $v0
+lw $v0, -4($fp)
+sw $s0, 0($v1)
+addi $v0, $v1, 4
+move $v1, $v0
+move $v0, $v1
+move $a0, $fp
+jal L18
+move $v0, $v0
+j L22
+L22:
+last assem
+jr $ra

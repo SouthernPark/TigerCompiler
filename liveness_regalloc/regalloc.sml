@@ -28,19 +28,9 @@ fun rewriteProgram [] instructions _ newTemps = (instructions, newTemps)
           | printAssem(Assem.MOVE{assem, dst, src}) = print assem
 
 
-	fun genStoreIns temp = let val ans = (MipsGen.codegen frame) (Tree.MOVE(memExp,Tree.TEMP temp))
-                                   val h = hd ans
+	fun genStoreIns temp = (MipsGen.codegen frame) (Tree.MOVE(memExp,Tree.TEMP temp))
 
-                               in
-                                 ans
-                               end
-
-	fun genLoadIns temp = let val ans = (MipsGen.codegen frame) (Tree.MOVE(Tree.TEMP temp, memExp))
-                                  val h = hd ans
-
-                              in
-                                ans
-                              end
+	fun genLoadIns temp = (MipsGen.codegen frame) (Tree.MOVE(Tree.TEMP temp, memExp))
 
 
 	(*find def and use of spill nodes in the input insts*)
@@ -57,6 +47,8 @@ fun rewriteProgram [] instructions _ newTemps = (instructions, newTemps)
                       val () = print ("2. regalloc new temp: " ^ Int.toString(newtemp) ^ "\n")
                       val () = print ("2. assem: " ^ assem)
                       val newSrcList = map (fn n => if n=spillNodeID then newtemp else n) srclist
+                      val () = app (fn s => print("old src List: " ^ Int.toString(s) ^ "\n")) srclist
+                      val () = app (fn s => print("new src List: " ^ Int.toString(s) ^ "\n")) newSrcList
 		  in [([hd (genLoadIns newtemp), Assem.OPER{assem=assem, dst=dstlist,src=newSrcList,jump=jump}],[(newtemp,"$t"^Int.toString(newtemp))])] end)
 	    else [([ins],[])]
 	  | findDefandUse (ins as Assem.MOVE{assem=assem, dst=dst,src=src}) =
