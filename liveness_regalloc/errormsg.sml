@@ -6,7 +6,7 @@ sig
     val linePos : int list ref
     val sourceStream : TextIO.instream ref
     val error : int -> string -> unit
-    exception Error
+    exception  Error
     val impossible : string -> 'a   (* raises Error *)
     val reset : unit -> unit
 end
@@ -50,4 +50,4 @@ struct
        raise Error)
 
 end  (* structure ErrorMsg *)
-  
+

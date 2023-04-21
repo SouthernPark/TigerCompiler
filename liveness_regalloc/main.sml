@@ -14,19 +14,21 @@ fun emitproc out (F.PROC{body,frame}) =
         val stms = Canon.linearize body
         (* val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
         val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
-        val instrs =   List.concat(map (G.codegen frame) stms')
+        val instrs = List.concat(map (G.codegen frame) stms')
         val format0 = Assem.format(Temp.makestring)
+
         val add_live_regs_instrs = F.procEntryExit2(frame, instrs)
         val add_procedure = F.procEntryExit3(frame, add_live_regs_instrs)
         val final_instrs = #body(add_procedure)
         val prolog = #prolog(add_procedure)
         val epilog = #epilog(add_procedure)
-        val (modify_instrs, allocations) = Reg_Alloc.alloc(final_instrs, frame)
-        val format = Assem.format(fn temp => valOf(Temp.Table.look(allocations, temp)))
+        val (final_instrs, allocations) = Reg_Alloc.alloc(final_instrs, frame)
+        val format = Assem.format(fn temp => case Temp.Table.look(allocations, temp) of SOME(v)  => v
+                                                                                      | NONE => (print ("no allc for the temp: "^ Int.toString(temp) ^"\n");raise ErrorMsg.Error))
         (* test for flowgraph and interference graph *)
         (* val _ = F.debugAllRegisters()
         val (Flow.FGRAPH{control, def, use, ismove}, nodelist) = MakeGraph.instrs2graph final_instrs
-        fun stringify (nodeid, data) = 
+        fun stringify (nodeid, data) =
           let
             val instruction_str = case data of Assem.OPER{assem, dst, src, jump} => assem
                       | Assem.LABEL{assem, lab} => (assem ^ " " ^ Symbol.name(lab))
