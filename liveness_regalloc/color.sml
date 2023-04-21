@@ -210,6 +210,7 @@ fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
 
       (*Transform output into the same format as Color.color's output*)
       val (coloredNodes, colorTable, spilledNodes) =  assignColors adjList precolored kcolors selectStack
+
       (*val () = print ("spilledNodes size: " ^ Int.toString(IntSet.numItems(spilledNodes)) ^ "\n")
       fun printString(t) = print (Int.toString(t) ^ "\n")
       val () = List.app printString (IntSet.listItems spilledNodes)*)

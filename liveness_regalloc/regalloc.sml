@@ -28,10 +28,10 @@ fun rewriteProgram [] instructions _ newTemps = (instructions, newTemps)
           | printAssem(Assem.MOVE{assem, dst, src}) = print assem
 
 
+
 	fun genStoreIns temp = (MipsGen.codegen frame) (Tree.MOVE(memExp,Tree.TEMP temp))
 
 	fun genLoadIns temp = (MipsGen.codegen frame) (Tree.MOVE(Tree.TEMP temp, memExp))
-
 
 	(*find def and use of spill nodes in the input insts*)
 	(*insert store to memory after each dst use and insert load from memory before each src use of spill node*)
