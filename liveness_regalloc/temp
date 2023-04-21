@@ -1,11 +1,16 @@
 let
-	 function readint(a:int, b:int, c:int, d:int, f:int) =
-	 	  let var j := 123
-		      function f() = j + 1
-		  in
-			f()
-		  end
+
+        var N := 8
+
+        type intArray = array of int
+        var col := intArray [ N ] of 0
+
+        function printboard() = (for i := 0 to N-1
+	 do (for j := 0 to N-1
+	      do print(if col[i]=j then " O" else " .");
+	     print("\n"));
+         print("\n"))
 
 in
-readint(1,2,3,4,5)
+printboard()
 end

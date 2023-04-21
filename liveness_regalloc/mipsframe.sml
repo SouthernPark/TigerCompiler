@@ -64,7 +64,7 @@ val allregs = [ZERO, AT] @ return_values @ args_reg @ callersaves_reg @ calleesa
 fun debugAllRegisters () = (foldl (fn (t, _) => (print(Int.toString(t) ^ " "); 0)) 0 allregs; print("\n"))
 
 (* registers that can be assigned to any temps *)
-val kregs = return_values @ args_reg @ callersaves_reg @ calleesaves_reg
+val kregs = return_values @ args_reg @ calleesaves_reg @ callersaves_reg
 
 fun zip ([], []) = []
   | zip ([], l) = []
@@ -72,8 +72,8 @@ fun zip ([], []) = []
   | zip ((a1::l1), (a2::l2)) = (a1, a2) :: zip(l1, l2)
 
 fun createTempMap () =
-    let 
-        val temp_color = zip (allregs, registers)
+    let
+      val temp_color = zip (allregs, registers)
     in
       foldl (fn ((temp, color), m) => Temp.Table.enter(m, temp, color)) Temp.Table.empty temp_color
     end
@@ -112,7 +112,27 @@ fun string(l:Temp.label, s:string) = Symbol.name(l) ^ ": .asciiz \"" ^ String.to
 
 (* temporaries zero, return-address, stack-pointer, and all the
     callee-saves registers are still live at the end of the function *)
-fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP] @ calleesaves_reg, dst=[], jump=SOME[]}]
+
+fun procEntryExit1(frame, body) = foldl (fn (callee_reg, ans_lst) =>
+                                            let
+                                              val newTemp = Temp.newtemp()
+                                              fun genStoreIns ()  = Assem.OPER{assem="move `d0, `s0\n",
+                                                                               src =[callee_reg],
+                                                                               dst=[newTemp],
+                                                                               jump=NONE}
+                                              fun genLoadIns () = Assem.OPER{assem="move `d0, `s0\n",
+                                                                             src =[newTemp],
+                                                                             dst=[callee_reg],
+                                                                             jump=NONE}
+
+                                            in
+                                              [genStoreIns ()] @ ans_lst @ [genLoadIns ()]
+                                            end
+                                        ) body calleesaves_reg
+
+
+
+fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP], dst=[], jump=SOME[]}]
 
 (* procedure entry/exit sequences, adding jal labels *)
 fun procEntryExit3({name, formals, numLocalVars, curOffSet}, body) =
