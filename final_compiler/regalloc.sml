@@ -16,35 +16,40 @@ fun unzip [] l1 l2 = (l1, l2)
   | unzip ((a1,a2)::l) l1 l2 = unzip l (l1 @ a1) (l2 @ a2)
 
 
+fun intToString (n:int) : string =
+    let val str = Int.toString(n)
+    in
+      if String.sub(str, 0) = #"~" then "-" ^ String.extract(str, 1, SOME(size str - 1))
+      else str
+    end
+
 fun rewriteProgram [] instructions _ newTemps = (instructions, newTemps)
   | rewriteProgram (spillNodeID::restNodes) instructions frame (newTemps:allocation) =
     let
-	val newFrameLocal = Frame.allocLocal frame true
+	val (newFrameLocal as Frame.InFrame(offset)) = Frame.allocLocal frame true
 	val memExp = Frame.exp newFrameLocal (Tree.TEMP Frame.FP)
-
 
         fun printAssem(Assem.OPER{assem, dst, src, jump}) = print (assem)
           | printAssem(Assem.LABEL{assem, lab}) = print assem
           | printAssem(Assem.MOVE{assem, dst, src}) = print assem
 
-
-
 	fun genStoreIns temp = (MipsGen.codegen frame) (Tree.MOVE(memExp,Tree.TEMP temp))
 
-	fun genLoadIns temp = (MipsGen.codegen frame) (Tree.MOVE(Tree.TEMP temp, memExp))
-
+	fun genLoadIns temp = Assem.OPER{
+              assem = "lw `d0, " ^ intToString(offset) ^ "(`s0)\n",
+              src = [Frame.FP], dst = [temp], jump = NONE
+            }
 	(*find def and use of spill nodes in the input insts*)
 	(*insert store to memory after each dst use and insert load from memory before each src use of spill node*)
 	fun findDefandUse (ins as Assem.OPER{assem=assem, dst=dstlist,src=srclist,jump=jump}) =
 	    if List.exists (fn y => y = spillNodeID) dstlist
 	    then (let val newtemp = Temp.newtemp()
-
                       val newDstList = map (fn n => if n=spillNodeID then newtemp else n) dstlist
 		  in  [([Assem.OPER{assem=assem, dst=newDstList,src=srclist,jump=jump}, hd (genStoreIns newtemp)],[(newtemp,"$t"^Int.toString(newtemp))])] end)
 	    else if List.exists (fn y => y = spillNodeID) srclist
 	    then (let val newtemp = Temp.newtemp()
                       val newSrcList = map (fn n => if n=spillNodeID then newtemp else n) srclist
-		  in [([hd (genLoadIns newtemp), Assem.OPER{assem=assem, dst=dstlist,src=newSrcList,jump=jump}],[(newtemp,"$t"^Int.toString(newtemp))])] end)
+		  in [([genLoadIns newtemp, Assem.OPER{assem=assem, dst=dstlist,src=newSrcList,jump=jump}],[(newtemp,"$t"^Int.toString(newtemp))])] end)
 	    else [([ins],[])]
 	  | findDefandUse (ins as Assem.MOVE{assem=assem, dst=dst,src=src}) =
 	    if dst = spillNodeID
@@ -52,7 +57,7 @@ fun rewriteProgram [] instructions _ newTemps = (instructions, newTemps)
 		  in [([Assem.MOVE{assem=assem, dst=newtemp,src=src}, hd (genStoreIns newtemp)],[(newtemp,"$t"^Int.toString(newtemp))])] end)
 	    else if src = spillNodeID
 	    then (let val newtemp = Temp.newtemp()
-		  in [([hd (genLoadIns newtemp), Assem.MOVE{assem=assem, dst=newtemp,src=newtemp}],[(newtemp,"$t"^Int.toString(newtemp))])] end)
+		  in [([genLoadIns newtemp, Assem.MOVE{assem=assem, dst=dst, src=newtemp}],[(newtemp,"$t"^Int.toString(newtemp))])] end)
 	    else [([ins], [])]
 	  | findDefandUse ins = [([ins], [])]
 

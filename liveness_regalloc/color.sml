@@ -153,7 +153,7 @@ fun assignColors adjList precolored kcolors selectStack =
                 else okcolors
 
             val ok_colors = IntSet.foldl exclude ok_colors neighbours
-
+            val () = print ("current assign temp " ^ Int.toString(nodeid) ^ "ok colors size: " ^ Int.toString(IntSet.numItems(ok_colors)) ^ "\n")
             fun assign () = if IntSet.isEmpty ok_colors then (coloredNodes, colorTable, IntSet.add(spilledNodes, nodeid))
                             else (IntSet.add(coloredNodes, nodeid), IntMap.insert(colorTable, nodeid, List.nth(IntSet.listItems ok_colors, 0)), spilledNodes)
             val (coloredNodes, colorTable, spilledNodes) = assign ()
@@ -181,6 +181,7 @@ fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
       val precolored = IntSet.difference (nodeSet, initialTempSet) (* temps that are machine regs *)
       val kcolors = IntSet.fromList(Frame.kregs) (* available colors *)
       val K = IntSet.numItems(kcolors) (* set K to the size of kcolors *)
+      val () = print ("K: " ^ Int.toString(K) ^ "\n")
       val selectStack = Stack.empty
 
       (* make worklist *)
@@ -210,6 +211,13 @@ fun main (Liveness.IGRAPH({graph, tnode, gtemp, moves}), initial)  =
 
       (*Transform output into the same format as Color.color's output*)
       val (coloredNodes, colorTable, spilledNodes) =  assignColors adjList precolored kcolors selectStack
+      val () = print("total size: " ^ Int.toString(List.length(nodes)) ^ "\n")
+      val () = print("colored size: " ^ Int.toString(IntSet.numItems(coloredNodes)) ^ "\n")
+      (*val () = print ("spilledNodes size: " ^ Int.toString(IntSet.numItems(spilledNodes)) ^ "\n")
+      fun printString(t) = print (Int.toString(t) ^ "\n")
+      val () = List.app printString (IntSet.listItems spilledNodes)*)
+
+
 
       (*val () = print ("spilledNodes size: " ^ Int.toString(IntSet.numItems(spilledNodes)) ^ "\n")
       fun printString(t) = print (Int.toString(t) ^ "\n")

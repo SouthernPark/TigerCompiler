@@ -11,7 +11,8 @@ structure Assem = struct
                  | LABEL of {assem: string, lab: Temp.label}
                  | MOVE of {assem: string,
 			    dst: temp,
-			    src: temp}
+ 			    src: temp}
+
 
   fun format saytemp =
     let
