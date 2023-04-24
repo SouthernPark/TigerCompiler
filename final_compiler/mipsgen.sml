@@ -169,13 +169,14 @@ fun codegen (frame) (stm: Tree.stm) : Assem.instr list =
             let
               val move_arg_stm = T.MOVE(T.TEMP(List.nth(Frame.args_reg, index)), curr_arg)
               val arg_temp = T.TEMP((List.nth(Frame.args_reg, index)))
-              val move_sp_stm = T.MOVE(T.MEM(T.BINOP(T.PLUS, T.TEMP(Frame.SP), T.CONST(((index - 3) * 4)))), curr_arg)
+              (* sp:a0, sp+1:a1, sp+2: a2, sp+3: a3, sp+4:a4.... *)
+              val save_arg_stm = T.MOVE(T.MEM(T.BINOP(T.PLUS, T.TEMP(Frame.SP), T.CONST(((index - 4) * 4) + 16))), curr_arg)
             in
               if index < 4
               (* use a0-a4 regs *)
               then (munchStm(move_arg_stm); [munchExp arg_temp] @ munchArgs(index + 1, args))
               (* extra on stack *)
-              else (munchStm(move_sp_stm); munchArgs(index + 1, args))
+              else (munchStm(save_arg_stm); munchArgs(index + 1, args))
             end
     in
       munchStm stm;
