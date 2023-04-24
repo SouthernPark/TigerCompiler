@@ -116,14 +116,14 @@ fun string(l:Temp.label, s:string) = Symbol.name(l) ^ ": .asciiz \"" ^ String.to
 fun procEntryExit1(frame, body) = foldl (fn (callee_reg, ans_lst) =>
                                             let
                                               val newTemp = Temp.newtemp()
-                                              fun genStoreIns ()  = Assem.OPER{assem="move `d0, `s0\n",
-                                                                               src =[callee_reg],
-                                                                               dst=[newTemp],
-                                                                               jump=NONE}
-                                              fun genLoadIns () = Assem.OPER{assem="move `d0, `s0\n",
-                                                                             src =[newTemp],
-                                                                             dst=[callee_reg],
-                                                                             jump=NONE}
+                                              fun genStoreIns ()  = Assem.MOVE{assem="move `d0, `s0\n",
+                                                                               src = callee_reg,
+                                                                               dst= newTemp }
+
+                                              fun genLoadIns () = Assem.MOVE{assem="move `d0, `s0\n",
+                                                                             src = newTemp,
+                                                                             dst= callee_reg}
+
 
                                             in
                                               [genStoreIns ()] @ ans_lst @ [genLoadIns ()]
@@ -132,7 +132,8 @@ fun procEntryExit1(frame, body) = foldl (fn (callee_reg, ans_lst) =>
 
 
 
-fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP], dst=[], jump=SOME[]}]
+fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP] @ calleesaves_reg, dst=[], jump=SOME[]}]
+
 
 (* procedure entry/exit sequences, adding jal labels *)
 fun procEntryExit3({name, formals, numLocalVars, curOffSet}, body) =

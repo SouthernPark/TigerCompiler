@@ -17,7 +17,7 @@ fun emitproc out (F.PROC{body,frame}) =
         val instrs = List.concat(map (G.codegen frame) stms')
         val format0 = Assem.format(Temp.makestring)
 
-        val add_live_regs_instrs = F.procEntryExit2(frame, instrs)
+        val add_live_regs_instrs = F.procEntryExit2(frame, F.procEntryExit1(frame, instrs))
         val add_procedure = F.procEntryExit3(frame, add_live_regs_instrs)
         val final_instrs = #body(add_procedure)
         val prolog = #prolog(add_procedure)
