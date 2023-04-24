@@ -134,11 +134,27 @@ fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP]
 
 (* procedure entry/exit sequences, adding jal labels *)
 fun procEntryExit3({name, formals, numLocalVars, curOffSet}, body) =
-                                    {prolog = (Symbol.name name) ^ ":\n", body = body, epilog = "jr $ra\n"}
-                                    (* for testing *)
-                                    (* {prolog = "PROCEDURE " ^ (Symbol.name name) ^ "\n",
-                                        body = body,
-                                        epilog = "END " ^ (Symbol.name name) ^ "\n"} *)
+    let
+      (* frame size: old fp, local variables, ra, callee_saves, formals(at least 4: a0-a3) *)
+      val framesize = (1 + abs(!curOffSet) + 1 + List.length(calleesaves_reg) 
+                          + (if List.length(formals) > 4 then List.length(formals) else 4)) * wordsize
+      (* function label *)
+      val label = Assem.LABEL{assem = Symbol.name(name) ^ ":\n", lab = name}
+      (* save old fp, set new fp, set new sp *)
+      val saveFP = Assem.OPER{assem = "sw `s0, -4(`s1)\n", src = [FP, SP], dst = [], jump = NONE}
+      val setFP = Assem.MOVE{assem = "move `d0, `s0\n", src = SP, dst = FP}
+      val setSP = Assem.OPER{assem="addi `d0, `s0, -" ^ Int.toString(framesize) ^ "\n", src = [SP], dst = [SP], jump = NONE}
+      val prolog_stm = [label] @ [saveFP] @ [setFP] @ [setSP]
+      (* restore sp, restore fp*)
+      val restoreSP = Assem.MOVE{assem="move `d0, `s0\n", src = FP, dst = SP}
+      val restoreFP = Assem.OPER{assem = "lw `d0, -4(`s0)\n", src = [FP], dst = [FP], jump = NONE}
+      val jr = Assem.OPER{assem = "jr `d0\n", src = [], dst = [RA], jump = NONE}
+      val epilog_stm = [restoreSP] @ [restoreFP] @ [jr]
+      (* final body *) 
+      val body = prolog_stm @ body @ epilog_stm
+    in
+      {prolog = "", body = body, epilog = ""}
+    end
 
 end
 
