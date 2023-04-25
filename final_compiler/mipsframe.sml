@@ -113,20 +113,32 @@ fun string(l:Temp.label, s:string) = Symbol.name(l) ^ ": .asciiz \"" ^ String.to
 (* temporaries zero, return-address, stack-pointer, and all the
     callee-saves registers are still live at the end of the function *)
 
-fun procEntryExit1(frame, body) = foldl (fn (callee_reg, ans_lst) =>
+(*copied from translate.sml to avoid cyclic dependency*)				
+fun seq [x] = x
+  | seq [s1, s2] = Tree.SEQ(s1,s2)
+  | seq (a::l) = Tree.SEQ(a, seq l)
+  | seq [] = Tree.EXP(Tree.CONST 0)
+
+fun procEntryExit1(frame, body:Tree.stm) =
+    let val genStore_body_genLoad =  foldl (fn (callee_reg, ans_lst) =>	 
                                             let
                                               val newTemp = Temp.newtemp()
-                                              fun genStoreIns ()  = Assem.MOVE{assem="move `d0, `s0\n",
-                                                                               src = callee_reg,
-                                                                               dst= newTemp }
-                                              fun genLoadIns () = Assem.MOVE{assem="move `d0, `s0\n",
-                                                                             src = newTemp,
-                                                                             dst= callee_reg}
-
+                                              fun genStoreIns ()  = Tree.MOVE((Tree.TEMP newTemp), Tree.TEMP callee_reg)                                                               
+                                              fun genLoadIns () = Tree.MOVE(Tree.TEMP callee_reg, Tree.TEMP newTemp)
                                             in
                                               [genStoreIns ()] @ ans_lst @ [genLoadIns ()]
                                             end
-                                        ) body calleesaves_reg
+                                           ) [body] calleesaves_reg
+	fun moveArgRegs (offset, []) = []
+	  | moveArgRegs (offset, ((acc:access)::l)) = if offset < 4
+					then Tree.MOVE((exp acc (Tree.TEMP FP)), Tree.TEMP(List.nth(args_reg, offset))) :: moveArgRegs(offset+1,l)
+					else case acc of
+						 InFrame _ => moveArgRegs(offset+1, l)
+					       | InReg temp =>  Tree.MOVE((exp acc (Tree.TEMP FP)), Tree.TEMP(List.nth(args_reg, offset))) :: moveArgRegs(offset+1, l)																				
+    in
+	seq(moveArgRegs(0, (formals frame)) @ genStore_body_genLoad)
+    end
+	
 
 
 
