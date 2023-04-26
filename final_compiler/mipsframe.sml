@@ -92,7 +92,7 @@ fun newFrame {name, formals} =
 				    then allocateFormals true
 				    else (curInRegFormals := !curInRegFormals+1;InReg(Temp.newtemp()))
     in
-	{name = name, formals = (map allocateFormals formals), numLocalVars = ref 0, curOffSet = ref 0, numOutPara = ref 0}
+	{name = name, formals = (map allocateFormals formals), numLocalVars = ref 0, curOffSet = ref (~4), numOutPara = ref 0}
     end
 
 fun allocLocal {name, formals, numLocalVars, curOffSet, numOutPara} isEscape =
@@ -144,7 +144,6 @@ fun procEntryExit1(frame : frame, body:Tree.stm) =
                                                        )
       (* side effect *)
       val () = numOutPara := (maxOutParaStm body)
-
       val genStore_body_genLoad =  foldl (fn (callee_reg, ans_lst) =>
                                             let
                                               val newTemp = Temp.newtemp()
@@ -170,9 +169,9 @@ fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP,
 (* procedure entry/exit sequences, adding jal labels *)
 fun procEntryExit3({name, formals, numLocalVars, curOffSet, numOutPara}, body) =
     let
-      (* frame size: old fp, local variables, ra, callee_saves, formals(at least 4: a0-a3) *)
-      val framesize = (1 + abs(!curOffSet) + 1 + List.length(calleesaves_reg)
-                          + (if !numOutPara > 4 then !numOutPara else 4)) * wordsize
+      (* frame size: local variables, ra, callee_saves [already in curOffset] formals(at least 4: a0-a3) *)
+      val framesize = abs(!curOffSet) + (if !numOutPara > 4 then !numOutPara else 4) * wordsize
+
       (* function label *)
       val label = Assem.LABEL{assem = Symbol.name(name) ^ ":\n", lab = name}
       (* save old fp, set new fp, set new sp *)

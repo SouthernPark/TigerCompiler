@@ -18,11 +18,14 @@ fun emitproc out (F.PROC{body,frame}) =
         val format0 = Assem.format(Temp.makestring)
 
         val add_live_regs_instrs = F.procEntryExit2(frame, instrs)
-        val add_procedure = F.procEntryExit3(frame, add_live_regs_instrs)
+
+        val (final_instrs, allocations) = Reg_Alloc.alloc(add_live_regs_instrs, frame)
+
+        val add_procedure = F.procEntryExit3(frame, final_instrs)
         val final_instrs = #body(add_procedure)
         val prolog = #prolog(add_procedure)
         val epilog = #epilog(add_procedure)
-        val (final_instrs, allocations) = Reg_Alloc.alloc(final_instrs, frame)
+
         val format = Assem.format(fn temp => case Temp.Table.look(allocations, temp) of SOME(v)  => v
                                                                                       | NONE => (print ("no allc for the temp: "^ Int.toString(temp) ^"\n");raise ErrorMsg.Error))
         (* test for flowgraph and interference graph *)
