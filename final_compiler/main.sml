@@ -55,14 +55,43 @@ fun withOpenFile fname f =
        handle e => (TextIO.closeOut out; raise e)
     end
 
+fun copyAssm out fname =
+    let val inStream = TextIO.openIn fname
+	val _ = TextIO.output(out, TextIO.inputAll inStream)
+	val _ = TextIO.closeIn inStream
+    in
+	()
+    end
+	
+fun printAssem fname frags =
+    let val strs = List.filter (fn x => case x of F.PROC _ => false
+						| F.STRING _ => true ) frags
+	val procs = List.filter (fn x => case x of F.PROC _ => true
+						 | F.STRING _ => false ) frags				
+	val out = TextIO.openOut(fname)
+	val _ = TextIO.output(out, ".globl tig_main")			     
+	val _ = TextIO.output(out, ".data\n")			     
+	val _ = app (emitproc out) strs
+		handle e => (TextIO.closeOut out; raise e)
+	val _ = TextIO.output(out, ".text\n")
+	val _ = copyAssm out "runtime-le.s"
+			 
+	val _ = app (emitproc out) procs
+		handle e => (TextIO.closeOut out; raise e)
+	val _ = copyAssm out "sysspim.s"
+	val _ = TextIO.closeOut out
+    in
+	()
+    end				           
+
 fun compile filename =
     let val absyn = Parse.parse filename
         (* TODO: implement find escape, val frags = (FindEscape.prog absyn; Semant.transProg absyn) *)
         val set_escape = FindEscape.findEscape absyn
         val frags = Semant.transProg absyn
     in
-      withOpenFile (filename ^ ".s")
-	           (fn out => (app (emitproc out) frags))
+     (* withOpenFile (filename ^ ".s") (fn out => (app (emitproc out) frags)) *)
+	printAssem (filename ^ ".s") frags		   
     end
 
 fun compilePrint filename =
