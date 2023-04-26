@@ -26,7 +26,7 @@ fun intToString (n:int) : string =
 fun rewriteProgram [] instructions _ newTemps = (instructions, newTemps)
   | rewriteProgram (spillNodeID::restNodes) instructions frame (newTemps:allocation) =
     let
-	val (newFrameLocal as Frame.InFrame(offset)) = Frame.allocLocal frame true
+      val (newFrameLocal as Frame.InFrame(offset)) = Frame.allocLocal frame true
 	val memExp = Frame.exp newFrameLocal (Tree.TEMP Frame.FP)
 
         fun printAssem(Assem.OPER{assem, dst, src, jump}) = print (assem)
