@@ -90,7 +90,7 @@ fun newFrame {name, formals} =
 	fun allocateFormals true = (curInFrameFormals := !curInFrameFormals+1;InFrame((!curInFrameFormals-1)*wordsize))
 	  | allocateFormals false = if !curInRegFormals > numArgRegisters
 				    then allocateFormals true
-				    else (curInRegFormals := !curInRegFormals+1;InReg(List.nth(args_reg, !curInRegFormals)))
+				    else (curInRegFormals := !curInRegFormals+1;InReg(Temp.newtemp()))
     in
 	{name = name, formals = (map allocateFormals formals), numLocalVars = ref 0, curOffSet = ref 0, numOutPara = ref 0}
     end
@@ -153,19 +153,19 @@ fun procEntryExit1(frame : frame, body:Tree.stm) =
                                             in
                                               [genStoreIns ()] @ ans_lst @ [genLoadIns ()]
                                             end
-                                           ) [body] calleesaves_reg
+                                           ) [body] (calleesaves_reg @ return_address)
 	fun moveArgRegs (offset, []) = []
 	  | moveArgRegs (offset, ((acc:access)::l)) = if offset < 4
 					then Tree.MOVE((exp acc (Tree.TEMP FP)), Tree.TEMP(List.nth(args_reg, offset))) :: moveArgRegs(offset+1,l)
 					else case acc of
-						 InFrame _ => moveArgRegs(offset+1, l)
-					       | InReg temp =>  Tree.MOVE((exp acc (Tree.TEMP FP)), Tree.TEMP(List.nth(args_reg, offset))) :: moveArgRegs(offset+1, l)
+						 InFrame _ => Tree.MOVE((exp acc (Tree.TEMP FP)), (exp (InFrame(4 * offset)) (Tree.TEMP FP))) :: moveArgRegs(offset+1, l)
+					       | InReg temp => Tree.MOVE((exp acc (Tree.TEMP FP)), Tree.TEMP(List.nth(args_reg, offset))) :: moveArgRegs(offset+1, l)
     in
 	seq(moveArgRegs(0, (formals frame)) @ genStore_body_genLoad)
     end
 
 
-fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP] @ calleesaves_reg, dst=[], jump=SOME[]}]
+fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP,V0,V1] @ calleesaves_reg, dst=[], jump=SOME[]}]
 
 (* procedure entry/exit sequences, adding jal labels *)
 fun procEntryExit3({name, formals, numLocalVars, curOffSet, numOutPara}, body) =
