@@ -46,6 +46,7 @@ fun rewriteProgram [] instructions _ newTemps = (instructions, newTemps)
 	fun findDefandUse (ins as Assem.OPER{assem=assem, dst=dstlist,src=srclist,jump=jump}) =
 	    if List.exists (fn y => y = spillNodeID) dstlist
 	    then (let val newtemp = Temp.newtemp()
+
                       val newDstList = map (fn n => if n=spillNodeID then newtemp else n) dstlist
 		  in  [([Assem.OPER{assem=assem, dst=newDstList,src=srclist,jump=jump}, hd (genStoreIns newtemp)],[(newtemp,"$t"^Int.toString(newtemp))])] end)
 	    else if List.exists (fn y => y = spillNodeID) srclist
