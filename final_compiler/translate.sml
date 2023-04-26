@@ -160,7 +160,7 @@ fun transRELOP (left, right, oper, ty) =
                            | A.GtOp => T.GT
                            | A.GeOp => T.GE
                            | _ => raise ErrorMsg.Error
-    val string_oper = case oper of A.EqOp => "stringEqual"
+    val string_oper = case oper of A.EqOp => "tig_stringEqual"
                            | A.NeqOp => "stringNE"
                            | A.LtOp => "stringLT"
                            | A.LeOp => "stringLE"
@@ -210,7 +210,7 @@ fun transRECORD (fields) =
           initField (l, statement::stmlist, index + 1)
         end
   in
-    Ex(T.ESEQ(seq ([T.MOVE(T.TEMP ptr, F.externalCall("allocRecord", [T.CONST(fields_len)]))] @ initField(fields, [], 0)), T.TEMP ptr))
+    Ex(T.ESEQ(seq ([T.MOVE(T.TEMP ptr, F.externalCall("tig_allocRecord", [T.CONST(fields_len)]))] @ initField(fields, [], 0)), T.TEMP ptr))
   end
 
 (* array exp *)
@@ -221,7 +221,7 @@ fun transARRAY (size, init) =
     val total_size = T.BINOP(T.PLUS, size', T.CONST 1)
     val ptr = Temp.newtemp()
   in
-    Ex(T.ESEQ(seq [T.MOVE(T.TEMP ptr, F.externalCall("initArray", [total_size, init'])),
+    Ex(T.ESEQ(seq [T.MOVE(T.TEMP ptr, F.externalCall("tig_initArray", [total_size, init'])),
                     T.MOVE(T.MEM(T.TEMP ptr), size'),
                     T.MOVE(T.TEMP ptr, T.BINOP(T.PLUS, T.TEMP ptr, T.CONST F.wordsize))],
                     T.TEMP ptr))
