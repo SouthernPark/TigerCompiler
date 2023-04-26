@@ -69,7 +69,7 @@ fun printAssem fname frags =
 	val procs = List.filter (fn x => case x of F.PROC _ => true
 						 | F.STRING _ => false ) frags				
 	val out = TextIO.openOut(fname)
-	val _ = TextIO.output(out, ".globl tig_main")			     
+	val _ = TextIO.output(out, ".globl tig_main\n")			     
 	val _ = TextIO.output(out, ".data\n")			     
 	val _ = app (emitproc out) strs
 		handle e => (TextIO.closeOut out; raise e)
