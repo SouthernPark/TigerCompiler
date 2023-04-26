@@ -2,7 +2,7 @@ structure MipsFrame : FRAME =
 struct
 type register = string
 datatype access = InFrame of int | InReg of Temp.temp
-type frame = {name: Temp.label, formals : access list, numLocalVars : int ref, curOffSet : int ref}
+type frame = {name: Temp.label, formals : access list, numLocalVars : int ref, curOffSet : int ref, numOutPara : int ref}
 datatype frag = PROC of {body : Tree.stm,  frame : frame}
               | STRING of Temp.label * string
 
@@ -82,8 +82,8 @@ val tempMap = createTempMap ()
 
 val wordsize = 4
 val numArgRegisters = 4 (*MIPS has 4 registers for argument*)
-fun name {name=name,formals= _,numLocalVars=_,curOffSet=_} = Symbol.name name
-fun formals {name=_, formals=formals,numLocalVars=_, curOffSet=_} = formals
+fun name {name=name,formals= _,numLocalVars=_,curOffSet=_, numOutPara=_} = Symbol.name name
+fun formals {name=_, formals=formals,numLocalVars=_, curOffSet=_, numOutPara=_} = formals
 fun newFrame {name, formals} =
     let val curInRegFormals = ref 0
 	val curInFrameFormals = ref 0
@@ -92,10 +92,10 @@ fun newFrame {name, formals} =
 				    then allocateFormals true
 				    else (curInRegFormals := !curInRegFormals+1;InReg(List.nth(args_reg, !curInRegFormals)))
     in
-	{name = name, formals = (map allocateFormals formals), numLocalVars = ref 0, curOffSet = ref 0 }
+	{name = name, formals = (map allocateFormals formals), numLocalVars = ref 0, curOffSet = ref 0, numOutPara = ref 0}
     end
 
-fun allocLocal {name, formals, numLocalVars, curOffSet} isEscape =
+fun allocLocal {name, formals, numLocalVars, curOffSet, numOutPara} isEscape =
     (numLocalVars := !numLocalVars + 1;
     case isEscape of
 	true => (curOffSet := !curOffSet-wordsize; InFrame(!curOffSet))
@@ -113,17 +113,42 @@ fun string(l:Temp.label, s:string) = Symbol.name(l) ^ ": .asciiz \"" ^ String.to
 (* temporaries zero, return-address, stack-pointer, and all the
     callee-saves registers are still live at the end of the function *)
 
-(*copied from translate.sml to avoid cyclic dependency*)				
+(*copied from translate.sml to avoid cyclic dependency*)
 fun seq [x] = x
   | seq [s1, s2] = Tree.SEQ(s1,s2)
   | seq (a::l) = Tree.SEQ(a, seq l)
   | seq [] = Tree.EXP(Tree.CONST 0)
 
-fun procEntryExit1(frame, body:Tree.stm) =
-    let val genStore_body_genLoad =  foldl (fn (callee_reg, ans_lst) =>	 
+fun max (n1 : int, n2 : int) = if n1 > n2 then n1 else n2
+
+
+fun procEntryExit1(frame : frame, body:Tree.stm) =
+    let
+      val {name=_, formals=_, numLocalVars=_, curOffSet=_, numOutPara=numOutPara} = frame
+
+      fun maxOutParaStm (Tree.LABEL(_)) = 0
+        | maxOutParaStm (Tree.SEQ(stm1, stm2)) = max(maxOutParaStm stm1, maxOutParaStm stm2)
+        | maxOutParaStm (Tree.JUMP(exp, _)) = maxOutParaExp(exp)
+        | maxOutParaStm (Tree.CJUMP(relop, exp1, exp2, l1, l2)) = max(maxOutParaExp exp1, maxOutParaExp exp2)
+        | maxOutParaStm (Tree.MOVE(exp1, exp2)) = max(maxOutParaExp exp1, maxOutParaExp exp2)
+        | maxOutParaStm (Tree.EXP(exp)) = maxOutParaExp exp
+      and maxOutParaExp (Tree.BINOP(binop, exp1, exp2)) = max(maxOutParaExp exp1, maxOutParaExp exp2)
+        | maxOutParaExp (Tree.MEM(exp)) = maxOutParaExp exp
+        | maxOutParaExp (Tree.TEMP(_)) = 0
+        | maxOutParaExp (Tree.ESEQ(stm, exp)) = max(maxOutParaStm stm, maxOutParaExp exp)
+        | maxOutParaExp (Tree.NAME(_)) = 0
+        | maxOutParaExp (Tree.CONST(_)) = 0
+        | maxOutParaExp (Tree.CALL(exp, exp_lst)) = max(List.length exp_lst,
+                                                        max(maxOutParaExp exp,
+                                                            foldl (fn (e, m) => max(m, maxOutParaExp e)) 0 exp_lst)
+                                                       )
+      (* side effect *)
+      val () = numOutPara := (maxOutParaStm body)
+
+      val genStore_body_genLoad =  foldl (fn (callee_reg, ans_lst) =>
                                             let
                                               val newTemp = Temp.newtemp()
-                                              fun genStoreIns ()  = Tree.MOVE((Tree.TEMP newTemp), Tree.TEMP callee_reg)                                                               
+                                              fun genStoreIns ()  = Tree.MOVE((Tree.TEMP newTemp), Tree.TEMP callee_reg)
                                               fun genLoadIns () = Tree.MOVE(Tree.TEMP callee_reg, Tree.TEMP newTemp)
                                             in
                                               [genStoreIns ()] @ ans_lst @ [genLoadIns ()]
@@ -134,22 +159,20 @@ fun procEntryExit1(frame, body:Tree.stm) =
 					then Tree.MOVE((exp acc (Tree.TEMP FP)), Tree.TEMP(List.nth(args_reg, offset))) :: moveArgRegs(offset+1,l)
 					else case acc of
 						 InFrame _ => moveArgRegs(offset+1, l)
-					       | InReg temp =>  Tree.MOVE((exp acc (Tree.TEMP FP)), Tree.TEMP(List.nth(args_reg, offset))) :: moveArgRegs(offset+1, l)																				
+					       | InReg temp =>  Tree.MOVE((exp acc (Tree.TEMP FP)), Tree.TEMP(List.nth(args_reg, offset))) :: moveArgRegs(offset+1, l)
     in
 	seq(moveArgRegs(0, (formals frame)) @ genStore_body_genLoad)
     end
-	
-
 
 
 fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP] @ calleesaves_reg, dst=[], jump=SOME[]}]
 
 (* procedure entry/exit sequences, adding jal labels *)
-fun procEntryExit3({name, formals, numLocalVars, curOffSet}, body) =
+fun procEntryExit3({name, formals, numLocalVars, curOffSet, numOutPara}, body) =
     let
       (* frame size: old fp, local variables, ra, callee_saves, formals(at least 4: a0-a3) *)
-      val framesize = (1 + abs(!curOffSet) + 1 + List.length(calleesaves_reg) 
-                          + (if List.length(formals) > 4 then List.length(formals) else 4)) * wordsize
+      val framesize = (1 + abs(!curOffSet) + 1 + List.length(calleesaves_reg)
+                          + (if !numOutPara > 4 then !numOutPara else 4)) * wordsize
       (* function label *)
       val label = Assem.LABEL{assem = Symbol.name(name) ^ ":\n", lab = name}
       (* save old fp, set new fp, set new sp *)
@@ -162,7 +185,7 @@ fun procEntryExit3({name, formals, numLocalVars, curOffSet}, body) =
       val restoreFP = Assem.OPER{assem = "lw `d0, -4(`s0)\n", src = [FP], dst = [FP], jump = NONE}
       val jr = Assem.OPER{assem = "jr `d0\n", src = [], dst = [RA], jump = NONE}
       val epilog_stm = [restoreSP] @ [restoreFP] @ [jr]
-      (* final body *) 
+      (* final body *)
       val body = prolog_stm @ body @ epilog_stm
     in
       {prolog = "", body = body, epilog = ""}
