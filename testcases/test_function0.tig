@@ -1,0 +1,9 @@
+/* function without arguments */
+
+let
+    var a := 2
+	function f() = a
+        
+in
+    f()
+end

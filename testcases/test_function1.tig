@@ -1,0 +1,10 @@
+/* function mutual call */
+
+let
+    var a := 2
+    function g() = a
+	function f() = g()
+        
+in
+    f()
+end

@@ -1,0 +1,14 @@
+/* nested function with arguments , answer = 16 */
+
+let
+    var a := 2
+	function f(b : int, c : int) : int = 
+        let
+            function g(d : int) : int = a + c + d
+        in
+            g(6) + b
+        end
+        
+in
+    f(3, 5)
+end
