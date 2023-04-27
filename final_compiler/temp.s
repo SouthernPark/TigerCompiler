@@ -1,6 +1,6 @@
 .globl tig_main
 .data
-L20: .asciiz "123"
+L3: .asciiz "123"
 .text
 	#.file	1 "runtime.c"
 	.option pic2
@@ -759,7 +759,7 @@ tig_main:
 sw $fp, -4($sp)
 move $fp, $sp
 addi $sp, $sp, -24
-L22:
+L5:
 sw $a0, 0($fp)
 move $v0, $ra
 sw $v0, -8($fp)
@@ -775,9 +775,7 @@ li $a0, 2
 li $a1, 3
 jal tig_initArray
 move $v1, $v0
-addi $v0, $v1, 4
-move $v1, $v0
-la $v0, L20
+la $v0, L3
 sw $v0, 4($v1)
 move $a0, $v1
 jal tig_print
@@ -792,8 +790,8 @@ move $s6, $s6
 move $s7, $s7
 lw $a0, -8($fp)
 move $ra, $a0
-j L21
-L21:
+j L4
+L4:
 move $sp, $fp
 lw $fp, -4($fp)
 jr $ra

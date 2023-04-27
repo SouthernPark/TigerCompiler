@@ -242,8 +242,10 @@ struct
               val {exp=hi_val, ty=hi_ty} = trexp hi
               val () = checkInt(low_ty, pos)
               val () = checkInt(hi_ty, pos)
+
 	      val access = Tr.allocLocal level (!escape)
               val venv' = S.enter(venv, var, E.VarEntry{access=access, ty=T.INT})
+
               val label_end = Temp.newlabel()
               val {exp=body_exp, ty=body_ty} = transExp(venv', tenv, SOME(label_end), level) body
               val () = if isSubTy(actual_ty(body_ty), T.UNIT)
