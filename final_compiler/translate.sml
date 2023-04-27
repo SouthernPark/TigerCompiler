@@ -25,7 +25,7 @@ sig
   val transASSIGN : exp * exp -> exp
   val transLET : exp list * exp -> exp
   val transSEQ : exp list -> exp
-  val transFOR : exp * exp * exp * Temp.label -> exp
+  val transFOR : exp * exp * exp * exp * Temp.label -> exp
   val transWHILE : exp * exp * Temp.label -> exp
   val transBREAK : Temp.label -> exp
   val transCall: exp list * level * level * Temp.label -> exp
@@ -301,24 +301,24 @@ fun transSEQ [] = Ex(T.CONST 0)
   | transSEQ (exp::explst) = Ex(T.ESEQ(unNx exp, unEx(transSEQ explst)))
 
 (* for exp *)
-fun transFOR (lo, hi, body, label_end) =
-  let
-    val lo' = unEx lo
+fun transFOR (var_exp, lo, hi, body, label_end) =
+    let
+	val var' = unEx var_exp			
+	val lo' = unEx lo		       
     val hi' = unEx hi
     val body' = unNx body
-    val v = Temp.newtemp()
     val end_reg = Temp.newtemp()
     val label_1 = Temp.newlabel()
     val label_2 = Temp.newlabel()
   in
-    Nx(seq [T.MOVE(T.TEMP v, lo'),
+    Nx(seq [T.MOVE(var', lo'),
             T.MOVE(T.TEMP end_reg, hi'),
-            T.CJUMP(T.LE, T.TEMP v, T.TEMP end_reg, label_2, label_end),
+            T.CJUMP(T.LE, var', T.TEMP end_reg, label_2, label_end),
             T.LABEL label_1,
-            T.MOVE(T.TEMP v, T.BINOP(T.PLUS, T.TEMP v, T.CONST 1)),
+            T.MOVE(var', T.BINOP(T.PLUS, var', T.CONST 1)),
             T.LABEL label_2,
             body',
-            T.CJUMP(T.LT, T.TEMP v, T.TEMP end_reg, label_1, label_end),
+            T.CJUMP(T.LT, var', T.TEMP end_reg, label_1, label_end),
             T.LABEL label_end])
   end
 
