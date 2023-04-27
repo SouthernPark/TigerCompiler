@@ -1,0 +1,11 @@
+/* test for loop and use the loop variable */
+
+let
+    var a := 5
+	function f() = 
+        for j:= 0 to 3
+            do (a := a + j)
+in
+    f();
+    a
+end

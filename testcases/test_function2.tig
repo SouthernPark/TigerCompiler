@@ -1,0 +1,14 @@
+/* nested function */
+
+let
+    var a := 2
+	function f() : int = 
+        let
+            function g() : int = a + 1
+        in
+            g()+1
+        end
+        
+in
+    f()
+end

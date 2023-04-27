@@ -1,0 +1,12 @@
+let
+    var a := 0
+    function dowhile() : int =
+        let
+        in
+            while a < 10
+                do (a := a + 1);
+            a
+        end
+in
+    dowhile()
+end
