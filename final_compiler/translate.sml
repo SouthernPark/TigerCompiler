@@ -20,6 +20,7 @@ sig
   val transBINOP : exp * exp * Absyn.oper -> exp
   val transRELOP : (exp  * exp * Absyn.oper * Types.ty) -> exp
   val transIF : exp * exp * exp -> exp
+  val transIFTHEN : exp * exp -> exp				      
   val transRECORD : exp list -> exp
   val transARRAY : exp * exp -> exp
   val transASSIGN : exp * exp -> exp
@@ -180,6 +181,20 @@ fun transRELOP (left, right, oper, ty) =
   end
 
 (* if expression *)
+fun transIFTHEN (testexp, thenexp) =
+    let
+	val test' = unCx testexp
+	val then' = unEx thenexp
+	val label_t = Temp.newlabel()
+	val label_end = Temp.newlabel()
+    in
+	Ex(T.ESEQ(seq [test'(label_t, label_end),
+		       T.LABEL label_t,
+		       T.EXP then',
+		       T.LABEL label_end], T.CONST 0))
+    end
+	
+     
 fun transIF (testexp, thenexp, elseexp) =
   let
     val test' = unCx testexp
