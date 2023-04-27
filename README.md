@@ -11,13 +11,13 @@ Wangkai Jin (wj78)
 
 Below mapped some chaptter program assignment to our git repo:
 
-[chapter2 lexical_analysis](./lexical_analysis "chapter2 lexical_analysis")
-[chapter3&4 parsing, abstract_syntax](./parser "chapter3&4 parsing, abstract_syntax")
-[chapter5 semantic_analysis](./semantic_analysis "chapter5 semantic_analysis")
-[chapter6&7 intermediate_representation](./intermediate_representation "chapter6&7 intermediate_representation")
-[chapter8&9 instruction_selection](./instruction_selection "chapter8&9 instruction_selection")
-[chapter10&11 liveness_analysis, register_allocation](./liveness_regalloc "chapter10&11 liveness_analysis, register_allocation")
-[chapter12 putting_it_all_together](./final_compiler "chapter12 putting_it_all_together")
+[chapter2 lexical_analysis](./lexical_analysis "chapter2 lexical_analysis") \
+[chapter3&4 parsing, abstract_syntax](./parser "chapter3&4 parsing, abstract_syntax") \
+[chapter5 semantic_analysis](./semantic_analysis "chapter5 semantic_analysis") \
+[chapter6&7 intermediate_representation](./intermediate_representation "chapter6&7 intermediate_representation") \
+[chapter8&9 instruction_selection](./instruction_selection "chapter8&9 instruction_selection") \
+[chapter10&11 liveness_analysis, register_allocation](./liveness_regalloc "chapter10&11 liveness_analysis, register_allocation") \
+[chapter12 putting_it_all_together](./final_compiler "chapter12 putting_it_all_together") 
 
 # Improvement and Regrade
 In semantic_analysis, we fixed two problems below, which can be tested in the final version code.
