@@ -218,14 +218,12 @@ fun transRECORD (fields) =
     fun initField ([], stmlist, index) = stmlist
       | initField (curr_exp::l, stmlist, index) =
         let
-          (* TODO: *)
-
           val statement = T.MOVE(T.MEM(T.BINOP(T.PLUS, T.TEMP ptr, T.CONST(F.wordsize * index))), unEx curr_exp)
         in
-          initField (l, statement::stmlist, index + 1)
+          initField (l, stmlist @ [statement], index + 1)
         end
   in
-    Ex(T.ESEQ(seq ([T.MOVE(T.TEMP ptr, F.externalCall("tig_allocRecord", [T.CONST(fields_len)]))] @ initField(fields, [], 0)), T.TEMP ptr))
+    Ex(T.ESEQ(seq ([T.MOVE(T.TEMP ptr, F.externalCall("tig_allocRecord", [T.CONST(fields_len * F.wordsize)]))] @ initField(fields, [], 0)), T.TEMP ptr))
   end
 
 (* array exp *)
