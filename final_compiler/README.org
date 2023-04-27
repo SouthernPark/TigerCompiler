@@ -1,43 +1,31 @@
-#+TITLE Liveness and Register Allocation
+#+TITLE Final Phase
 #+DATE <2023-04>
-#+TODO: TODO INPROCESS UNSURE DONE
 
-Liveness Analysis + Register Allocation
+Putting it All Together, Making it Work
 
 * grader read
-+ We are using funcgraph to implement flowgraph and interference graph instead of original graph provided by textbook
-+ In color.sml, the available registers that can be assigned are a0-a1, v0-v1, t0-t9, s0-s7
-+ In color.sml, we implemented simpilfy, selectSpill and assignColors step
-+ If there are any spill nodes after assigning colors, we will rewrite the program and repeat liveness analysis and coloring (in regalloc.sml)
++ Since we implement spill and rewrite program in Reg_Alloc, callee-save registers are saved into temps and not always written to frame.
++ Please re-examine the problems in semantic_analysis, we've fixed that. 
 
 * new file added
 
 | name          | description                                         |
-| makegraph.sml | need to implement "instrs2graph" method             |
-| liveness.sml  | need to implement "interferenceGraph" and "show"    |
-| color.sml     | need to implement "color"                           |
-| regalloc.sml  | need to implement "alloc"                           |
+| runtime-le.s  | external calls                                      |
+| sysspim.s     | syscalls                                            |
 
 * todo
 
-** Liveness
-done: implement MakeGraph structure (add nodes, edges to make a complete flowgraph)
-done: implement Liveness structure (computer live_in and live_out map for each node, make an interference graph)
+** MipsFrame
+done: implement procEntryExit1, calculate maximum number of outgoing params space, store ra, arguments and callee-saves register
+done: implement procEntryExit3, moving framepointer and stackpointer in prolog and epilog
 
-** Reg Allocation
-done: implement Color structure (repeat simpilfy and selectSpill, pop nodes from the selectStack and assign colors, record spill nodes)
-done: implement Reg_Alloc structure (make flowgraph, make interference_graph, assign colors, rewrite program if there are any spill nodes, repeat all the steps.)
+** Main
+done: concat final mips file with runtime-le.s and sysspim.s, add .globl, .data and .text for each section
+
+** String
+done: add .word in layout of the string
+
+** Small Fix
+done: fix all externalCall's label name, fix tig_main label name
 
 * issue
-
-** TODO 1 precolored nodes
-
-The initial precolored nodes is obtained by:
-#+BEGIN_SRC
-val precolored = IntSet.difference (nodeSet, initialTempSet)
-#+END_SRC
-
-Nodes in the graph - intial temps that are not colored
-
-
-
