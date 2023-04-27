@@ -134,7 +134,6 @@ fun transSTRING (str) =
 		     fraglist := (newString)::(!fraglist);
 
                      Ex(T.ESEQ(seq[T.MOVE(T.TEMP ptr, F.externalCall("tig_initArray", [T.CONST 2, T.CONST(size str)])),
-                                   T.MOVE(T.TEMP ptr, T.BINOP(T.PLUS, T.TEMP ptr, T.CONST (F.wordsize))),
                                    T.MOVE(T.MEM(T.BINOP(T.PLUS, T.TEMP ptr, T.CONST (F.wordsize))), T.NAME newLabel)
                                 ],
                        T.TEMP ptr))
@@ -310,13 +309,14 @@ fun transSEQ [] = Ex(T.CONST 0)
 (* for exp *)
 fun transFOR (var_exp, lo, hi, body, label_end) =
     let
-	val var' = unEx var_exp			
-	val lo' = unEx lo		       
-    val hi' = unEx hi
-    val body' = unNx body
-    val end_reg = Temp.newtemp()
-    val label_1 = Temp.newlabel()
-    val label_2 = Temp.newlabel()
+      val var' = unEx var_exp
+      val lo' = unEx lo
+
+      val hi' = unEx hi
+      val body' = unNx body
+      val end_reg = Temp.newtemp()
+      val label_1 = Temp.newlabel()
+      val label_2 = Temp.newlabel()
   in
     Nx(seq [T.MOVE(var', lo'),
             T.MOVE(T.TEMP end_reg, hi'),
