@@ -273,6 +273,7 @@ fun transSIMPLEVAR ((varLevel, F.InReg(temp):F.access):access, funLevel) = Ex(F.
     let
       fun findStaticLink(func_level, var_level, fp) =
           let
+            val () = print ("test ====== \n")
             val Level({parent=funcParent, frame=funFrame}, _) = func_level
           in
             if isEqualLevel(func_level, var_level) then (fp)

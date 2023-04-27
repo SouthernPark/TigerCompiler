@@ -269,7 +269,7 @@ struct
 
         and trvar (A.SimpleVar(id,pos)) = (* check var binding exist : id *)
             (case S.look(venv,id) of
-                SOME(E.VarEntry{access, ty}) => {exp=Tr.transSIMPLEVAR(access, level), ty=actual_ty ty}
+                 SOME(E.VarEntry{access, ty}) => {exp=Tr.transSIMPLEVAR(access, level), ty=actual_ty ty}
               | SOME(E.FunEntry{level=funLevel, label=funLabel, formals, result}) =>
                 (error pos ("var " ^ (S.name id) ^ " should be a variable rather than a func");
                   {exp=Tr.ERROREXP, ty=T.IMPOSSIBILITY})
@@ -394,8 +394,9 @@ struct
                               SOME(E.FunEntry(r)) => r
                             | _ => (error pos' ("Function: " ^ (S.name name') ^ " does not exist."); raise ErrorMsg.Error)
 
-                      val param_access_lst = Tr.formals func_level
+                      val param_access_lst = tl(Tr.formals func_level)
                       val param_zip = zip(params', param_access_lst)
+
                       fun putParamInVenv((param:A.field, access:Tr.access), ans_venv) =
                           let val param_name = (#name param)
                               val param_ty = actual_ty(getTyFromSym(tenv, (#typ param)))

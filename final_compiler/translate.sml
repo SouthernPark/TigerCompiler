@@ -128,9 +128,16 @@ fun transSTRING (str) =
 	    SOME(F.STRING(l,s)) => Ex(T.NAME l)
 	  | _ => let val newLabel = Temp.newlabel ()
 	             val newString = F.STRING(newLabel, str)
+                     val ptr = Temp.newtemp ()
+                     val () = print("string size: " ^ Int.toString(size str) ^ "\n")
  		 in
 		     fraglist := (newString)::(!fraglist);
-		     Ex(T.NAME newLabel)
+
+                     Ex(T.ESEQ(seq[T.MOVE(T.TEMP ptr, F.externalCall("tig_initArray", [T.CONST 2, T.CONST(size str)])),
+                                   T.MOVE(T.TEMP ptr, T.BINOP(T.PLUS, T.TEMP ptr, T.CONST (F.wordsize))),
+                                   T.MOVE(T.MEM(T.BINOP(T.PLUS, T.TEMP ptr, T.CONST (F.wordsize))), T.NAME newLabel)
+                                ],
+                       T.TEMP ptr))
 		 end
     end
 

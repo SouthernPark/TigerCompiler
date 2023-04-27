@@ -170,7 +170,8 @@ fun procEntryExit2(frame, body) = body @ [Assem.OPER{assem="", src =[ZERO,RA,SP,
 fun procEntryExit3({name, formals, numLocalVars, curOffSet, numOutPara}, body) =
     let
       (* frame size: local variables, ra, callee_saves [already in curOffset] formals(at least 4: a0-a3) *)
-      val framesize = abs(!curOffSet) + (if !numOutPara > 4 then !numOutPara else 4) * wordsize
+      val out = (if !numOutPara > 4 then !numOutPara else 4) * wordsize
+      val framesize = abs(!curOffSet) + out
 
       (* function label *)
       val label = Assem.LABEL{assem = Symbol.name(name) ^ ":\n", lab = name}

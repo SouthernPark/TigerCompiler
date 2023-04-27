@@ -1,5 +1,6 @@
+.globl tig_main
 .data
-L19: .asciiz "\n"
+L20: .asciiz "123"
 .text
 	#.file	1 "runtime.c"
 	.option pic2
@@ -754,84 +755,45 @@ tig_flush:
 tig_exit:
   j exit
   .end tig_exit
-L18:
+tig_main:
 sw $fp, -4($sp)
 move $fp, $sp
-addi $sp, $sp, -56
-L21:
-sw $a0, 0($fp)
-move $v0, $ra
-sw $v0, -4($fp)
-move $s7, $s7
-move $s6, $s6
-move $s5, $s5
-move $s4, $s4
-move $s3, $s3
-move $s2, $s2
-move $s1, $s1
-move $s0, $s0
-la $v0, L19
-move $a0, $v0
-jal L0
-move $v0, $v0
-move $s0, $s0
-move $s1, $s1
-move $s2, $s2
-move $s3, $s3
-move $s4, $s4
-move $s5, $s5
-move $s6, $s6
-move $s7, $s7
-lw $a0, -4($fp)
-move $ra, $a0
-j L20
-L20:
-move $sp, $fp
-lw $fp, -4($fp)
-jr $ra
-L17:
-sw $fp, -4($sp)
-move $fp, $sp
-addi $sp, $sp, -56
-L23:
+addi $sp, $sp, -24
+L22:
 sw $a0, 0($fp)
 move $v0, $ra
 sw $v0, -8($fp)
-move $v0, $s7
-sw $v0, -4($fp)
-move $s7, $s6
-move $s6, $s5
-move $s5, $s4
-move $s4, $s3
+move $s7, $s7
+move $s6, $s6
+move $s5, $s5
+move $s4, $s4
+move $s3, $s3
 move $s2, $s2
 move $s1, $s1
 move $s0, $s0
-li $s3, 8
-addi $v0, $s3, 1
-move $a0, $v0
-li $a1, 0
-jal initArray
-move $v0, $v0
-sw $s3, 0($v0) 
-addi $v0, $v0, 4
-move $v0, $v0
-move $v0, $v0
-move $a0, $fp
-jal L18
+li $a0, 2
+li $a1, 3
+jal tig_initArray
+move $v1, $v0
+addi $v0, $v1, 4
+move $v1, $v0
+la $v0, L20
+sw $v0, 4($v1)
+move $a0, $v1
+jal tig_print
 move $v0, $v0
 move $s0, $s0
 move $s1, $s1
 move $s2, $s2
-move $s3, $s4
-move $s4, $s5
-move $s5, $s6
-move $s6, $s7
-lw $a0, -4($fp)
-move $s7, $a0
+move $s3, $s3
+move $s4, $s4
+move $s5, $s5
+move $s6, $s6
+move $s7, $s7
 lw $a0, -8($fp)
 move $ra, $a0
-j L22
-L22:
+j L21
+L21:
 move $sp, $fp
 lw $fp, -4($fp)
 jr $ra

@@ -394,7 +394,7 @@ struct
                               SOME(E.FunEntry(r)) => r
                             | _ => (error pos' ("Function: " ^ (S.name name') ^ " does not exist."); raise ErrorMsg.Error)
 
-                      val param_access_lst = Tr.formals func_level
+                      val param_access_lst = tl(Tr.formals func_level)
                       val param_zip = zip(params', param_access_lst)
                       fun putParamInVenv((param:A.field, access:Tr.access), ans_venv) =
                           let val param_name = (#name param)
