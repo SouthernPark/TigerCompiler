@@ -108,7 +108,7 @@ fun exp access fp_exp =
     case access of InReg(tmp) => Tree.TEMP tmp
                  | InFrame(offset) => Tree.MEM(Tree.BINOP(Tree.PLUS, fp_exp, Tree.CONST(offset)))
 
-fun string(l:Temp.label, s:string) = Symbol.name(l) ^ ": .asciiz \"" ^ String.toCString(s) ^ "\"\n"
+fun string(l:Temp.label, s:string) = Symbol.name(l) ^ ":\n" ^ ".word " ^ Int.toString(size s) ^ "\n" ^ ".asciiz \"" ^ String.toCString(s) ^ "\"\n"
 
 (* temporaries zero, return-address, stack-pointer, and all the
     callee-saves registers are still live at the end of the function *)

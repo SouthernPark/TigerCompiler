@@ -20,7 +20,7 @@ sig
   val transBINOP : exp * exp * Absyn.oper -> exp
   val transRELOP : (exp  * exp * Absyn.oper * Types.ty) -> exp
   val transIF : exp * exp * exp -> exp
-  val transIFTHEN : exp * exp -> exp				      
+  val transIFTHEN : exp * exp -> exp
   val transRECORD : exp list -> exp
   val transARRAY : exp * exp -> exp
   val transASSIGN : exp * exp -> exp
@@ -129,15 +129,9 @@ fun transSTRING (str) =
 	    SOME(F.STRING(l,s)) => Ex(T.NAME l)
 	  | _ => let val newLabel = Temp.newlabel ()
 	             val newString = F.STRING(newLabel, str)
-                     val ptr = Temp.newtemp ()
-                     val () = print("string size: " ^ Int.toString(size str) ^ "\n")
  		 in
 		     fraglist := (newString)::(!fraglist);
-
-                     Ex(T.ESEQ(seq[T.MOVE(T.TEMP ptr, F.externalCall("tig_initArray", [T.CONST 2, T.CONST(size str)])),
-                                   T.MOVE(T.MEM(T.BINOP(T.PLUS, T.TEMP ptr, T.CONST (F.wordsize))), T.NAME newLabel)
-                                ],
-                       T.TEMP ptr))
+                     Ex(T.NAME newLabel)
 		 end
     end
 
@@ -193,8 +187,8 @@ fun transIFTHEN (testexp, thenexp) =
 		       T.EXP then',
 		       T.LABEL label_end], T.CONST 0))
     end
-	
-     
+
+
 fun transIF (testexp, thenexp, elseexp) =
   let
     val test' = unCx testexp
