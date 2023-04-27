@@ -368,7 +368,7 @@ fun transSUBSCRIPTVAR (array, index) =
                     T.MOVE(T.TEMP index_reg, index'),
                     T.CJUMP(T.LT, T.TEMP index_reg, T.CONST 0, label_error, label_continue),
                     T.LABEL label_continue,
-                    T.CJUMP(T.GE, T.TEMP index_reg, T.MEM(T.BINOP(T.MINUS, T.TEMP array_ptr, T.CONST 1)), label_error, label_valid),
+                    T.CJUMP(T.GE, T.TEMP index_reg, T.MEM(T.BINOP(T.MINUS, T.TEMP array_ptr, T.CONST F.wordsize)), label_error, label_valid),
                     T.LABEL label_error,
                     T.EXP(F.externalCall("exit", [T.CONST 1])),
                     T.LABEL label_valid],
