@@ -104,15 +104,15 @@ struct
             end
           (*if expression*)
           | trexp (A.IfExp({test=test_exp, then'=then_exp, else'=NONE, pos=pos'})) =
-            let val {exp=_, ty=test_ty} = trexp(test_exp)
+            let val {exp=test_exp', ty=test_ty} = trexp(test_exp)
                 val () = if isSubTy(actual_ty test_ty, T.INT) then ()
                          else error pos' ("If condition: type " ^ (T.name test_ty) ^ " is not a subtype of INT")
-                val {exp=_, ty=then_ty} = trexp(then_exp)
+                val {exp=then_exp', ty=then_ty} = trexp(then_exp)
                 (* then_exp must evaluate to no value *)
                 val () = if isSubTy(actual_ty then_ty, T.UNIT) then ()
                          else error pos' (T.name(actual_ty then_ty) ^ " is not a subtype of UNIT.")
             in
-              {exp=Tr.transINT(0), ty=T.UNIT} (* if expression with no else, returns no value *)
+              {exp=Tr.transIFTHEN(test_exp', then_exp'), ty=T.UNIT} (* if expression with no else, returns no value *)
             end
           | trexp (A.IfExp({test=test_exp, then'=then_exp, else'=SOME(else_exp), pos=pos'})) =
             let val {exp=test_exp', ty=test_ty} = trexp(test_exp)
