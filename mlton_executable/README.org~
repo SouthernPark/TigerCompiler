@@ -1,0 +1,10 @@
+#+TITLE Liveness and Register Allocation
+#+DATE <2023-04>
+#+TODO: TODO INPROCESS UNSURE DONE
+
+Convert sml compiler to executable file
+
+* how
+
+We use mlton to convert
+

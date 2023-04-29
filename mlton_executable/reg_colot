@@ -1,0 +1,36 @@
+
+temp 100 : color $zero
+temp 101 : color $at
+temp 102 : color $v0
+temp 103 : color $v1
+temp 104 : color $a0
+temp 105 : color $a1
+temp 106 : color $a2
+temp 107 : color $a3
+temp 108 : color $t0
+temp 109 : color $t1
+temp 110 : color $t2
+temp 111 : color $t3
+temp 112 : color $t4
+temp 113 : color $t5
+temp 114 : color $t6
+temp 115 : color $t7
+temp 116 : color $t8
+temp 117 : color $t9
+temp 118 : color $s0
+temp 119 : color $s1
+temp 120 : color $s2
+temp 121 : color $s3
+temp 122 : color $s4
+temp 123 : color $s5
+temp 124 : color $s6
+temp 125 : color $s7
+temp 126 : color $k0
+temp 127 : color $k1
+temp 128 : color $gp
+temp 129 : color $sp
+temp 130 : color $fp
+temp 131 : color $ra
+[New bindings added.]
+val it = true : bool
+-
