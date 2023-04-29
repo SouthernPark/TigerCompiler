@@ -1,5 +1,10 @@
 let
-
+	var a := 10
+	function f() = let
+		 var b := 10
+	in
+	a + b
+	end
 in
 print("123")
 end

@@ -1,0 +1,26 @@
+#+TITLE Liveness and Register Allocation
+#+DATE <2023-04>
+#+TODO: TODO INPROCESS UNSURE DONE
+
+Convert sml compiler to executable file
+
+We use mlton compiler to compile out sml code into binary executable.
+
+The commands used are as below:
+
+#+BEGIN_SRC
+mlton -output compile sources.mlb
+#+END_SRC
+
+
+
+* run with binary file
+
+#+BEGIN_SRC
+.compile temp
+#+END_SRC
+
+The above will compile the temp tiger into mips commands named as temp.s
+
+
+
